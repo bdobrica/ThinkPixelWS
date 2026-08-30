@@ -21,79 +21,79 @@ Completion metadata format:
 
 ## Phase 0 — Decisions, threats, and contracts
 
-- [ ] ARC-001 Create `docs/`, `docs/adr/`, and `docs/contracts/` structure plus ADR template.
-- [ ] ARC-002 Write system-context diagram covering users, WS, PostgreSQL, hot storage, portable storage, profiles, source systems, AG, AR, TG, MP, Kubernetes, and execution environments.
-- [ ] ARC-003 Write trust-boundary diagram distinguishing Workspace metadata, durable content, Materializations, external systems, application profiles, and execution authority.
-- [ ] ARC-004 Write threat model assuming malicious repositories, archives, documents, symlinks, agents, Materializations, source metadata, and compromised execution environments.
-- [ ] ARC-005 Define normative glossary: Workspace, WorkspaceGeneration, WorkspaceComponent, Materialization, checkpoint, portable snapshot, fork, source binding, external binding, profile binding, environment binding.
-- [ ] ARC-006 Record invariant: Workspace != Materialization.
-- [ ] ARC-007 Record invariant: Workspace != AR Session.
-- [ ] ARC-008 Record invariant: WorkspaceBinding != AccessGrant.
-- [ ] ARC-009 Record invariant: Workspace content must not intentionally contain platform execution credentials.
-- [ ] ARC-010 Define persistent vs portable vs roaming semantics.
-- [ ] ARC-011 Define Workspace lifecycle state machine.
-- [ ] ARC-012 Define Materialization lifecycle state machine.
-- [ ] ARC-013 Define immutable WorkspaceGeneration semantics.
-- [ ] ARC-014 Define Workspace head advancement and optimistic-concurrency rules.
-- [ ] ARC-015 Define one-writable-Materialization default and read-only concurrency.
-- [ ] ARC-016 Define writer lease duration/renewal and monotonic fencing-token semantics.
-- [ ] ARC-017 Define stale-writer terminal behavior and commit rejection.
-- [ ] ARC-018 Define Workspace ownership scopes: user, team, service identity, project where supported.
-- [ ] ARC-019 Define tenant and Workspace administrative authorization model.
-- [ ] ARC-020 Define Workspace classification and source trust/taint vocabulary.
-- [ ] ARC-021 Define provenance schema including source, source revision, import actor/Run, derived-from, classification, and taint.
-- [ ] ARC-022 Define WorkspaceComponent kind vocabulary.
-- [ ] ARC-023 Define deterministic component path/mount namespace and collision rules.
-- [ ] ARC-024 Define repository component schema.
-- [ ] ARC-025 Define generic directory component schema.
-- [ ] ARC-026 Define document-collection component schema.
-- [ ] ARC-027 Define ArtifactBinding schema.
-- [ ] ARC-028 Define ExternalBinding schema and modes.
-- [ ] ARC-029 Define ApplicationProfileBinding schema.
-- [ ] ARC-030 Define EnvironmentBinding schema.
-- [ ] ARC-031 Define Workspace Manifest `v1alpha1`.
-- [ ] ARC-032 Define source snapshot, refreshable-snapshot, and live-reference semantics.
-- [ ] ARC-033 Define explicit separation between source import and source write-back.
-- [ ] ARC-034 Define `SourceProvider` interface.
-- [ ] ARC-035 Define `MaterializationProvider`/working-storage interface.
-- [ ] ARC-036 Define provider checkpoint interface.
-- [ ] ARC-037 Define `PortableStore` interface.
-- [ ] ARC-038 Benchmark/research candidate portable snapshot approaches and record decision criteria.
-- [ ] ARC-039 Select initial portable snapshot implementation/format based on correctness, portability, dedup potential, performance, and operational simplicity.
-- [ ] ARC-040 Define PortableSnapshot manifest and integrity rules.
-- [ ] ARC-041 Define snapshot vs checkpoint vs WorkspaceGeneration durability semantics.
-- [ ] ARC-042 Define encryption/key-provider contract for portable state.
-- [ ] ARC-043 Define profile-provider contract and credential-adjacent state rules.
-- [ ] ARC-044 Decide whether browser-profile backend is RC-required or provider-seam-only for first RC.
-- [ ] ARC-045 Define browser-profile materialization authority and audit semantics.
-- [ ] ARC-046 Define environment interoperability policy for Dev Container and Devfile.
-- [ ] ARC-047 Define trusted mapping rule preventing environment metadata from directly granting host/Kubernetes privilege.
-- [ ] ARC-048 Define Kubernetes/CSI working-materialization approach without introducing a custom WS operator.
-- [ ] ARC-049 Pin/test Kubernetes, CSI snapshot API, and selected storage capabilities.
-- [ ] ARC-050 Define Kubernetes Agent Sandbox integration boundary with AR.
-- [ ] ARC-051 Define AR `WorkspaceBinding` contract.
-- [ ] ARC-052 Define AG execution Workspace-access grant contract.
-- [ ] ARC-053 Define component subset and read/write access semantics in AG grant.
-- [ ] ARC-054 Define WS behavior when AG grant is cancelled, expired, or revoked.
-- [ ] ARC-055 Define TG governed source-import contract.
-- [ ] ARC-056 Define external live-binding relationship to TG.
-- [ ] ARC-057 Define MP environment/template artifact reference semantics.
-- [ ] ARC-058 Define data-residency and placement policy contract.
-- [ ] ARC-059 Define locality hints vs scheduling authority.
-- [ ] ARC-060 Define Workspace fork semantics and profile-binding behavior during fork.
-- [ ] ARC-061 Define Workspace archive/restore/delete and retention semantics.
-- [ ] ARC-062 Define legal-hold seam where enterprise policy requires it.
-- [ ] ARC-063 Define secret-persistence prevention and optional scanning hooks.
-- [ ] ARC-064 Define path/archive/symlink security limits.
-- [ ] ARC-065 Define API authentication, RFC 7807, UUIDv7, pagination, idempotency, tracing, request limits, and SSE.
-- [ ] ARC-066 Draft OpenAPI for Workspaces, components, generations, Materializations, checkpoints, commits, forks, snapshots, imports, lifecycle, and events.
-- [ ] ARC-067 Define PostgreSQL schema model, tenant scoping, immutability, leases, audit, outbox, idempotency, and migration strategy.
-- [ ] ARC-068 Define Workspace event vocabulary.
-- [ ] ARC-069 Define observability/redaction contract.
-- [ ] ARC-070 Define target SLOs and RPO/RTO assumptions for hot state, committed generations, portable snapshots, materialization, restore, and roaming.
-- [ ] ARC-071 Define supported-version policy for Go, PostgreSQL, Kubernetes, CSI, object store, OPA, and integration components.
-- [ ] ARC-072 Reconcile Phase 0 with the enterprise-agent blueprint, especially content provenance/taint and governance boundaries.
-- [ ] ARC-073 Validate schemas/OpenAPI/docs and commit Phase 0 evidence.
+- [x] ARC-001 Create `docs/`, `docs/adr/`, and `docs/contracts/` structure plus ADR template. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-002 Write system-context diagram covering users, WS, PostgreSQL, hot storage, portable storage, profiles, source systems, AG, AR, TG, MP, Kubernetes, and execution environments. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-003 Write trust-boundary diagram distinguishing Workspace metadata, durable content, Materializations, external systems, application profiles, and execution authority. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-004 Write threat model assuming malicious repositories, archives, documents, symlinks, agents, Materializations, source metadata, and compromised execution environments. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-005 Define normative glossary: Workspace, WorkspaceGeneration, WorkspaceComponent, Materialization, checkpoint, portable snapshot, fork, source binding, external binding, profile binding, environment binding. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-006 Record invariant: Workspace != Materialization. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-007 Record invariant: Workspace != AR Session. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-008 Record invariant: WorkspaceBinding != AccessGrant. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-009 Record invariant: Workspace content must not intentionally contain platform execution credentials. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-010 Define persistent vs portable vs roaming semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-011 Define Workspace lifecycle state machine. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-012 Define Materialization lifecycle state machine. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-013 Define immutable WorkspaceGeneration semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-014 Define Workspace head advancement and optimistic-concurrency rules. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-015 Define one-writable-Materialization default and read-only concurrency. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-016 Define writer lease duration/renewal and monotonic fencing-token semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-017 Define stale-writer terminal behavior and commit rejection. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-018 Define Workspace ownership scopes: user, team, service identity, project where supported. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-019 Define tenant and Workspace administrative authorization model. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-020 Define Workspace classification and source trust/taint vocabulary. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-021 Define provenance schema including source, source revision, import actor/Run, derived-from, classification, and taint. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-022 Define WorkspaceComponent kind vocabulary. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-023 Define deterministic component path/mount namespace and collision rules. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-024 Define repository component schema. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-025 Define generic directory component schema. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-026 Define document-collection component schema. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-027 Define ArtifactBinding schema. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-028 Define ExternalBinding schema and modes. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-029 Define ApplicationProfileBinding schema. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-030 Define EnvironmentBinding schema. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-031 Define Workspace Manifest `v1alpha1`. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-032 Define source snapshot, refreshable-snapshot, and live-reference semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-033 Define explicit separation between source import and source write-back. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-034 Define `SourceProvider` interface. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-035 Define `MaterializationProvider`/working-storage interface. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-036 Define provider checkpoint interface. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-037 Define `PortableStore` interface. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-038 Benchmark/research candidate portable snapshot approaches and record decision criteria. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-039 Select initial portable snapshot implementation/format based on correctness, portability, dedup potential, performance, and operational simplicity. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-040 Define PortableSnapshot manifest and integrity rules. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-041 Define snapshot vs checkpoint vs WorkspaceGeneration durability semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-042 Define encryption/key-provider contract for portable state. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-043 Define profile-provider contract and credential-adjacent state rules. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-044 Decide whether browser-profile backend is RC-required or provider-seam-only for first RC. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-045 Define browser-profile materialization authority and audit semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-046 Define environment interoperability policy for Dev Container and Devfile. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-047 Define trusted mapping rule preventing environment metadata from directly granting host/Kubernetes privilege. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-048 Define Kubernetes/CSI working-materialization approach without introducing a custom WS operator. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-049 Pin/test Kubernetes, CSI snapshot API, and selected storage capabilities. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-050 Define Kubernetes Agent Sandbox integration boundary with AR. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-051 Define AR `WorkspaceBinding` contract. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-052 Define AG execution Workspace-access grant contract. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-053 Define component subset and read/write access semantics in AG grant. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-054 Define WS behavior when AG grant is cancelled, expired, or revoked. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-055 Define TG governed source-import contract. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-056 Define external live-binding relationship to TG. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-057 Define MP environment/template artifact reference semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-058 Define data-residency and placement policy contract. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-059 Define locality hints vs scheduling authority. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-060 Define Workspace fork semantics and profile-binding behavior during fork. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-061 Define Workspace archive/restore/delete and retention semantics. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-062 Define legal-hold seam where enterprise policy requires it. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-063 Define secret-persistence prevention and optional scanning hooks. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-064 Define path/archive/symlink security limits. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-065 Define API authentication, RFC 7807, UUIDv7, pagination, idempotency, tracing, request limits, and SSE. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-066 Draft OpenAPI for Workspaces, components, generations, Materializations, checkpoints, commits, forks, snapshots, imports, lifecycle, and events. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-067 Define PostgreSQL schema model, tenant scoping, immutability, leases, audit, outbox, idempotency, and migration strategy. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-068 Define Workspace event vocabulary. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-069 Define observability/redaction contract. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-070 Define target SLOs and RPO/RTO assumptions for hot state, committed generations, portable snapshots, materialization, restore, and roaming. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-071 Define supported-version policy for Go, PostgreSQL, Kubernetes, CSI, object store, OPA, and integration components. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-072 Reconcile Phase 0 with the enterprise-agent blueprint, especially content provenance/taint and governance boundaries. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
+- [x] ARC-073 Validate schemas/OpenAPI/docs and commit Phase 0 evidence. — completed 2026-08-30, commit 025d12e, evidence: scripts/validate-phase0.sh; docs/phase-0-evidence.md
 
 ---
 
