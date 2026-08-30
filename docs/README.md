@@ -6,7 +6,7 @@ This directory contains the normative Phase 0 architecture baseline.
 - `security.md` defines the threat model, content-handling limits, credential/profile rules, authorization boundaries, and observability redaction.
 - `operations.md` defines placement, residency, retention, events, SLO assumptions, and supported infrastructure.
 - `database-model.md` defines the authoritative PostgreSQL model and invariants.
-- `enterprise-integration.md` defines ThinkPixelAG, ThinkPixelAR, ThinkPixelTG, and ThinkPixelMP boundaries.
+- `enterprise-integration.md` defines ThinkPixelAG, ThinkPixelAR, ThinkPixelTG, ThinkPixelMP, ThinkPixelMEM, and optional ThinkPixelGR boundaries.
 - `portable-snapshot-evaluation.md` records the portable-format decision and benchmark plan.
 - `supported-versions.md` is the compatibility policy.
 - `adr/` contains accepted architecture decisions.

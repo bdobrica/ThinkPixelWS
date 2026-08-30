@@ -45,6 +45,18 @@ Live external bindings remain references. At use time, the runtime presents a cu
 
 Committed generations reference qualified artifacts as `mp://<catalog>/<artifact>@sha256:<digest>` with artifact kind, platform/architecture, qualification policy/version, and optional compatibility requirements. Mutable input tags are resolved by MP before commit. WS stores the immutable reference and metadata, not package bytes or registry credentials. AR resolves/materializes the environment under its own authority and trusted runtime-profile mapping.
 
+## ThinkPixelMEM provenance references
+
+WS remains authoritative for source files, Workspace generations, and their provenance. When MEM records a learned claim derived from Workspace content, WS provides stable references to the supporting Workspace, immutable generation, component, and content digest where available. MEM owns the learned claim and its memory lifecycle; it does not copy that responsibility into WS or become authoritative for Workspace source state.
+
+A provenance reference is evidence, not authority. It does not grant MEM, a Run, or a later consumer access to the referenced Workspace or component. Access requires a current authorization decision through the configured WS authorizer and, for governed execution, AG.
+
+## ThinkPixelGR ingestion evaluation
+
+Imported content may be evaluated by GR through an optional, replaceable policy adapter. WS supplies bounded content or immutable content references plus tenant, classification, provenance, taint, and evaluation-profile context according to deployment policy. GR returns findings or a decision for WS to enforce; a GR result cannot grant Workspace access, expand a Run grant, remove provenance, or silently lower classification or taint.
+
+WS remains responsible for safe extraction, structural validation, and enforcing the configured import outcome. Deployments without GR must retain those baseline controls and use an explicit local policy rather than treating the missing integration as authorization.
+
 ## Enterprise blueprint reconciliation
 
-The contracts preserve the platform boundaries in `PLAN.md`: WS owns durable context and immutable provenance/taint; AG owns Run authority; AR owns execution; TG owns governed source/external access and credentials; MP owns qualified software; GR or policy consumers evaluate risk. Provenance and taints are append-only inputs to policy and cannot themselves grant access. No fail-open path is defined.
+The contracts preserve the platform boundaries in `PLAN.md`: WS owns durable context and immutable provenance/taint; AG owns Run authority; AR owns execution; TG owns governed source/external access and credentials; MP owns qualified software; MEM owns learned claims while referencing WS evidence; GR or another configured policy adapter evaluates content risk. Provenance, memory, taints, and guardrail results are inputs to policy and cannot themselves grant access. No fail-open path is defined.
