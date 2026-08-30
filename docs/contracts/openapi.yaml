@@ -1,0 +1,343 @@
+openapi: 3.1.0
+info:
+  title: ThinkPixelWS API
+  version: 0.1.0-phase0
+  description: Phase 0 contract for durable, versioned Workspaces. Workspace membership is not authority.
+servers:
+  - url: https://workspace.example.com
+security:
+  - oidc: []
+tags:
+  - name: Workspaces
+  - name: Components
+  - name: Generations
+  - name: Materializations
+  - name: Snapshots
+  - name: Imports
+  - name: Lifecycle
+  - name: Events
+paths:
+  /v1/workspaces:
+    post:
+      tags: [Workspaces]
+      operationId: createWorkspace
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateWorkspace' } } } }
+      responses:
+        '201': { description: Created, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Workspace' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      tags: [Workspaces]
+      operationId: listWorkspaces
+      parameters: [{ $ref: '#/components/parameters/Cursor' }, { $ref: '#/components/parameters/Limit' }]
+      responses:
+        '200': { description: Page, content: { application/json: { schema: { $ref: '#/components/schemas/WorkspacePage' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [Workspaces]
+      operationId: getWorkspace
+      responses:
+        '200': { description: Workspace, content: { application/json: { schema: { $ref: '#/components/schemas/Workspace' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Lifecycle]
+      operationId: deleteWorkspace
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '202': { description: Deletion requested, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/components:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [Components]
+      operationId: listComponents
+      parameters: [{ $ref: '#/components/parameters/Cursor' }, { $ref: '#/components/parameters/Limit' }]
+      responses:
+        '200': { description: Components, content: { application/json: { schema: { type: array, maxItems: 500, items: { $ref: '#/components/schemas/Component' } } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Components]
+      operationId: addComponent
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ComponentInput' } } } }
+      responses:
+        '202': { description: Generation-producing operation accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/components/{component_id}:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }, { $ref: '#/components/parameters/ComponentId' }]
+    get:
+      tags: [Components]
+      operationId: getComponent
+      responses:
+        '200': { description: Component, content: { application/json: { schema: { $ref: '#/components/schemas/Component' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/generations:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [Generations]
+      operationId: listGenerations
+      parameters: [{ $ref: '#/components/parameters/Cursor' }, { $ref: '#/components/parameters/Limit' }]
+      responses:
+        '200': { description: Generations, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Generation' } } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/generations/{generation}:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }, { $ref: '#/components/parameters/GenerationNumber' }]
+    get:
+      tags: [Generations]
+      operationId: getGeneration
+      responses:
+        '200': { description: Immutable generation, content: { application/json: { schema: { $ref: '#/components/schemas/Generation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/materializations:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [Materializations]
+      operationId: createMaterialization
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateMaterialization' } } } }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Materialization' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/materializations/{materialization_id}:
+    parameters: [{ $ref: '#/components/parameters/MaterializationId' }]
+    get:
+      tags: [Materializations]
+      operationId: getMaterialization
+      responses:
+        '200': { description: Materialization, content: { application/json: { schema: { $ref: '#/components/schemas/Materialization' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Materializations]
+      operationId: releaseMaterialization
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '202': { description: Release accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/materializations/{materialization_id}/checkpoint:
+    parameters: [{ $ref: '#/components/parameters/MaterializationId' }]
+    post:
+      tags: [Materializations]
+      operationId: checkpointMaterialization
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FencedRequest' } } } }
+      responses:
+        '202': { description: Checkpoint accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/materializations/{materialization_id}/commit:
+    parameters: [{ $ref: '#/components/parameters/MaterializationId' }]
+    post:
+      tags: [Generations]
+      operationId: commitMaterialization
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CommitRequest' } } } }
+      responses:
+        '201': { description: Generation committed, content: { application/json: { schema: { $ref: '#/components/schemas/Generation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/snapshots:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [Snapshots]
+      operationId: createPortableSnapshot
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [generation], properties: { generation: { type: integer, minimum: 1 } } } } } }
+      responses:
+        '202': { description: Snapshot accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      tags: [Snapshots]
+      operationId: listPortableSnapshots
+      responses:
+        '200': { description: Snapshots, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/PortableSnapshot' } } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/forks:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [Workspaces]
+      operationId: forkWorkspace
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [generation, name], properties: { generation: { type: integer, minimum: 1 }, name: { $ref: '#/components/schemas/Name' }, includeProfileReferences: { type: boolean, default: false } } } } } }
+      responses:
+        '202': { description: Fork accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/imports:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [Imports]
+      operationId: importSource
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ImportRequest' } } } }
+      responses:
+        '202': { description: Import accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/imports/{import_id}:
+    get:
+      tags: [Imports]
+      operationId: getImport
+      parameters: [{ name: import_id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }]
+      responses:
+        '200': { description: Import operation, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/refreshes:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [Imports]
+      operationId: refreshSources
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [componentIds, expectedHeadGeneration], properties: { componentIds: { type: array, minItems: 1, uniqueItems: true, items: { $ref: '#/components/schemas/UUID' } }, expectedHeadGeneration: { type: integer, minimum: 1 }, conflictPolicy: { enum: [fail, fork] } } } } } }
+      responses:
+        '202': { description: Refresh accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/archive:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [Lifecycle]
+      operationId: archiveWorkspace
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      responses:
+        '202': { description: Archive accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/restore:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    post:
+      tags: [Lifecycle]
+      operationId: restoreWorkspace
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: false, required: [target], properties: { target: { $ref: '#/components/schemas/TargetContext' } } } } } }
+      responses:
+        '202': { description: Restore accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/workspaces/{workspace_id}/events:
+    parameters: [{ $ref: '#/components/parameters/WorkspaceId' }]
+    get:
+      tags: [Events]
+      operationId: streamWorkspaceEvents
+      parameters: [{ name: Last-Event-ID, in: header, required: false, schema: { type: string, maxLength: 128 } }]
+      responses:
+        '200': { description: Ordered resumable Workspace event stream, content: { text/event-stream: { schema: { type: string } } } }
+        default: { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    oidc: { type: openIdConnect, openIdConnectUrl: https://identity.example.com/.well-known/openid-configuration }
+  parameters:
+    WorkspaceId: { name: workspace_id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    ComponentId: { name: component_id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    MaterializationId: { name: materialization_id, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    GenerationNumber: { name: generation, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 128 } }
+    Cursor: { name: cursor, in: query, required: false, schema: { type: string, maxLength: 2048 } }
+    Limit: { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+  responses:
+    Problem:
+      description: RFC 7807 problem
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+  schemas:
+    UUID: { type: string, format: uuid, description: UUIDv7 }
+    Name: { type: string, minLength: 1, maxLength: 63, pattern: '^[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$' }
+    Classification: { enum: [public, internal, confidential, restricted] }
+    WorkspaceState: { enum: [CREATING, READY, ARCHIVING, ARCHIVED, RESTORING, DELETING, DELETED, DEGRADED] }
+    CreateWorkspace:
+      type: object
+      additionalProperties: false
+      required: [name, owner]
+      properties:
+        name: { $ref: '#/components/schemas/Name' }
+        owner: { $ref: '#/components/schemas/Owner' }
+        classification: { $ref: '#/components/schemas/Classification' }
+        residency: { type: array, uniqueItems: true, items: { type: string, maxLength: 63 } }
+    Owner:
+      type: object
+      additionalProperties: false
+      required: [kind, id]
+      properties: { kind: { enum: [user, team, service, project] }, id: { type: string, minLength: 1, maxLength: 256 } }
+    Workspace:
+      type: object
+      additionalProperties: false
+      required: [id, name, owner, state, stateVersion, createdAt]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { $ref: '#/components/schemas/Name' }
+        owner: { $ref: '#/components/schemas/Owner' }
+        state: { $ref: '#/components/schemas/WorkspaceState' }
+        stateVersion: { type: integer, minimum: 1 }
+        headGeneration: { type: integer, minimum: 1 }
+        classification: { $ref: '#/components/schemas/Classification' }
+        residency: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+    WorkspacePage:
+      type: object
+      required: [items]
+      properties: { items: { type: array, items: { $ref: '#/components/schemas/Workspace' } }, nextCursor: { type: [string, 'null'] } }
+    ComponentInput:
+      type: object
+      additionalProperties: false
+      required: [name, kind, path]
+      properties:
+        name: { $ref: '#/components/schemas/Name' }
+        kind: { enum: [repository, directory, document-collection, artifact-collection] }
+        path: { type: string, pattern: '^/workspace/[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$' }
+        source: { $ref: '#/components/schemas/SourceBinding' }
+    Component:
+      allOf:
+        - { $ref: '#/components/schemas/ComponentInput' }
+        - { type: object, required: [id], properties: { id: { $ref: '#/components/schemas/UUID' }, classification: { $ref: '#/components/schemas/Classification' }, taints: { type: array, uniqueItems: true, items: { type: string } } } }
+    SourceBinding:
+      type: object
+      additionalProperties: false
+      required: [ref, mode]
+      properties: { ref: { type: string, format: uri, maxLength: 2048 }, mode: { enum: [snapshot, refreshable-snapshot, live-reference] }, revision: { type: string, maxLength: 512 } }
+    Generation:
+      type: object
+      additionalProperties: false
+      required: [workspaceId, number, state, manifestDigest, createdAt]
+      properties: { workspaceId: { $ref: '#/components/schemas/UUID' }, number: { type: integer, minimum: 1 }, state: { const: COMPLETED }, parentGeneration: { type: integer, minimum: 1 }, manifestDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }, durability: { enum: [provider-local, portable] }, createdAt: { type: string, format: date-time } }
+    TargetContext:
+      type: object
+      additionalProperties: false
+      required: [targetId, region, storageClass]
+      properties: { targetId: { type: string, maxLength: 256 }, region: { type: string, maxLength: 63 }, storageClass: { type: string, maxLength: 253 }, architecture: { type: string, maxLength: 32 } }
+    CreateMaterialization:
+      type: object
+      additionalProperties: false
+      required: [generation, componentAccess, mode, target, executionGrant]
+      properties:
+        generation: { type: integer, minimum: 1 }
+        componentAccess: { type: array, minItems: 1, uniqueItems: true, items: { type: object, additionalProperties: false, required: [componentId, mode], properties: { componentId: { $ref: '#/components/schemas/UUID' }, mode: { enum: [read-only, read-write] } } } }
+        mode: { enum: [read-only, read-write] }
+        target: { $ref: '#/components/schemas/TargetContext' }
+        executionGrant: { type: string, minLength: 1, maxLength: 4096, description: "Opaque AG grant reference; never a downstream credential" }
+    Materialization:
+      type: object
+      additionalProperties: false
+      required: [id, workspaceId, generation, mode, state, target]
+      properties: { id: { $ref: '#/components/schemas/UUID' }, workspaceId: { $ref: '#/components/schemas/UUID' }, generation: { type: integer, minimum: 1 }, mode: { enum: [read-only, read-write] }, state: { enum: [REQUESTED, PREPARING, READY, ACTIVE, CHECKPOINTING, RELEASING, RELEASED, FAILED, FENCED] }, target: { $ref: '#/components/schemas/TargetContext' }, fencingToken: { type: integer, minimum: 1 }, expiresAt: { type: string, format: date-time }, handle: { type: string, maxLength: 4096, description: Opaque non-authorizing provider handle } }
+    FencedRequest:
+      type: object
+      additionalProperties: false
+      required: [leaseId, fencingToken]
+      properties: { leaseId: { $ref: '#/components/schemas/UUID' }, fencingToken: { type: integer, minimum: 1 } }
+    CommitRequest:
+      allOf:
+        - { $ref: '#/components/schemas/FencedRequest' }
+        - { type: object, required: [expectedHeadGeneration], properties: { expectedHeadGeneration: { type: integer, minimum: 1 }, durability: { enum: [provider-local, portable], default: provider-local } } }
+    ImportRequest:
+      type: object
+      additionalProperties: false
+      required: [component, source, expectedHeadGeneration]
+      properties: { component: { $ref: '#/components/schemas/ComponentInput' }, source: { $ref: '#/components/schemas/SourceBinding' }, expectedHeadGeneration: { type: integer, minimum: 0 } }
+    PortableSnapshot:
+      type: object
+      additionalProperties: false
+      required: [id, workspaceId, generation, state]
+      properties: { id: { $ref: '#/components/schemas/UUID' }, workspaceId: { $ref: '#/components/schemas/UUID' }, generation: { type: integer, minimum: 1 }, state: { enum: [REQUESTED, EXPORTING, READY, FAILED, DELETING, DELETED] }, manifestDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }, createdAt: { type: string, format: date-time } }
+    Operation:
+      type: object
+      additionalProperties: false
+      required: [id, state]
+      properties: { id: { $ref: '#/components/schemas/UUID' }, state: { enum: [PENDING, RUNNING, SUCCEEDED, FAILED] }, resourceId: { $ref: '#/components/schemas/UUID' }, createdAt: { type: string, format: date-time } }
+    Problem:
+      type: object
+      additionalProperties: true
+      required: [type, title, status]
+      properties: { type: { type: string, format: uri-reference }, title: { type: string, maxLength: 256 }, status: { type: integer, minimum: 400, maximum: 599 }, detail: { type: string, maxLength: 4096 }, instance: { type: string, format: uri-reference }, code: { type: string, maxLength: 128 }, traceId: { type: string, maxLength: 64 } }

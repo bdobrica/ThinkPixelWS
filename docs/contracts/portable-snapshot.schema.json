@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workspace.thinkpixel.io/schemas/v1alpha1/portable-snapshot.json",
+  "title": "ThinkPixelWS PortableSnapshot Manifest v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formatVersion", "snapshotId", "tenantId", "workspaceId", "generation", "createdAt", "components", "encryption"],
+  "properties": {
+    "formatVersion": {"const": "workspace.thinkpixel.io/portable-snapshot/v1alpha1"},
+    "snapshotId": {"type": "string", "format": "uuid"}, "tenantId": {"type": "string", "format": "uuid"}, "workspaceId": {"type": "string", "format": "uuid"},
+    "generation": {"type": "integer", "minimum": 1}, "createdAt": {"type": "string", "format": "date-time"}, "classification": {"enum": ["public", "internal", "confidential", "restricted"]},
+    "residency": {"type": "array", "uniqueItems": true, "items": {"type": "string", "maxLength": 63}},
+    "components": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/component"}},
+    "encryption": {"$ref": "#/$defs/encryption"}, "manifestDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "blob": {
+      "type": "object", "additionalProperties": false, "required": ["digest", "size", "ciphertextSize"],
+      "properties": {"digest": {"$ref": "#/$defs/digest"}, "size": {"type": "integer", "minimum": 0}, "ciphertextSize": {"type": "integer", "minimum": 16}, "mediaType": {"type": "string", "maxLength": 255}}
+    },
+    "entry": {
+      "type": "object", "additionalProperties": false, "required": ["path", "type", "mode"],
+      "properties": {"path": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000]+$"}, "type": {"enum": ["file", "directory"]}, "mode": {"type": "integer", "minimum": 0, "maximum": 511}, "size": {"type": "integer", "minimum": 0}, "contentDigest": {"$ref": "#/$defs/digest"}, "blobs": {"type": "array", "items": {"$ref": "#/$defs/blob"}}}
+    },
+    "component": {
+      "type": "object", "additionalProperties": false, "required": ["componentId", "name", "kind", "rootDigest", "entries", "provenance"],
+      "properties": {"componentId": {"type": "string", "format": "uuid"}, "name": {"type": "string", "maxLength": 63}, "kind": {"enum": ["repository", "directory", "document-collection", "artifact-collection"]}, "rootDigest": {"$ref": "#/$defs/digest"}, "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}}, "provenance": {"type": "object"}}
+    },
+    "encryption": {
+      "type": "object", "additionalProperties": false, "required": ["algorithm", "keyProvider", "keyId", "wrappedDataKey"],
+      "properties": {"algorithm": {"const": "AES-256-GCM"}, "keyProvider": {"type": "string", "maxLength": 128}, "keyId": {"type": "string", "maxLength": 1024}, "keyVersion": {"type": "string", "maxLength": 128}, "wrappedDataKey": {"type": "string", "contentEncoding": "base64", "maxLength": 16384}}
+    }
+  }
+}
