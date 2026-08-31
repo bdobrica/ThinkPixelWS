@@ -102,7 +102,7 @@ Completion metadata format:
 - [x] ENG-001 Initialize Go module using supported pinned Go version. — completed 2026-08-31, commit 4b4ffc0, evidence: `GOTOOLCHAIN=go1.25.14 go mod verify`; `GOTOOLCHAIN=go1.25.14 go test ./...`; `make verify`
 - [x] ENG-002 Create repository structure matching domain/app/ports/adapters boundaries. — completed 2026-08-31, commit 130f585, evidence: `GOTOOLCHAIN=go1.25.14 go test ./...`; `make verify`; `git diff --check`
 - [x] ENG-003 Add dependency/source/license policy. — completed 2026-08-31, commit e56509d, evidence: `GOTOOLCHAIN=go1.25.14 go mod verify`; `make verify`; `git diff --check`
-- [ ] ENG-004 Implement typed configuration with file/environment support, validation, safe defaults, and secret references.
+- [x] ENG-004 Implement typed configuration with file/environment support, validation, safe defaults, and secret references. — completed 2026-08-31, commit fe9630b, evidence: `GOTOOLCHAIN=go1.25.14 go test ./...`; `GOTOOLCHAIN=go1.25.14 go vet ./...`; `make verify`; `git diff --check`
 - [ ] ENG-005 Implement structured logging with tenant/Workspace/generation/Materialization correlation and recursive secret redaction.
 - [ ] ENG-006 Implement Prometheus registry and OpenTelemetry initialization.
 - [ ] ENG-007 Implement shared UUIDv7, injectable clock, typed errors, bounded strings, digest types, and authenticated cursors.
