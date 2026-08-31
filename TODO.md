@@ -99,7 +99,7 @@ Completion metadata format:
 
 ## Phase 1 — Engineering foundation
 
-- [ ] ENG-001 Initialize Go module using supported pinned Go version.
+- [x] ENG-001 Initialize Go module using supported pinned Go version. — completed 2026-08-31, commit 4b4ffc0, evidence: `GOTOOLCHAIN=go1.25.14 go mod verify`; `GOTOOLCHAIN=go1.25.14 go test ./...`; `make verify`
 - [ ] ENG-002 Create repository structure matching domain/app/ports/adapters boundaries.
 - [ ] ENG-003 Add dependency/source/license policy.
 - [ ] ENG-004 Implement typed configuration with file/environment support, validation, safe defaults, and secret references.
