@@ -1,0 +1,6 @@
+generator:
+  # Authentication remains an explicit HTTP adapter concern (IAM-001 onward).
+  # The generated wire contract must not be mistaken for OIDC enforcement.
+  ignore_not_implemented:
+    - openIdConnect security
+    - complex defaults

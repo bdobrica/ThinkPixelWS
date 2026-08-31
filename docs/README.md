@@ -15,6 +15,7 @@ This directory contains the normative Phase 0 architecture baseline.
 - `telemetry.md` defines isolated Prometheus registration, bounded metric labels, and OpenTelemetry initialization.
 - `shared-primitives.md` defines UUIDv7, clock, error, bounded-string, digest, and authenticated-cursor foundations.
 - `http-server.md` defines the baseline listeners, middleware, health, metrics, limits, errors, and shutdown behavior.
+- `openapi-development.md` defines reproducible contract generation, validation, and drift checks.
 - `adr/` contains accepted architecture decisions.
 - `contracts/` contains machine-readable and provider-facing contracts.
 - `phase-0-evidence.md` records validation evidence and remaining environment-dependent verification.

@@ -1,0 +1,11 @@
+--- a/oas_create_materialization_component_access_item_equal_gen.go
++++ b/oas_create_materialization_component_access_item_equal_gen.go
+@@ -2,6 +2,8 @@
+ 
+ package openapi
+ 
++import "github.com/ogen-go/ogen/validate"
++
+ // Equal compares two CreateMaterializationComponentAccessItem instances for equality.
+ // The depth parameter prevents infinite recursion on nested objects.
+ func (a CreateMaterializationComponentAccessItem) Equal(b CreateMaterializationComponentAccessItem, depth int) bool {
