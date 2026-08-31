@@ -9,6 +9,7 @@ This directory contains the normative Phase 0 architecture baseline.
 - `enterprise-integration.md` defines ThinkPixelAG, ThinkPixelAR, ThinkPixelTG, ThinkPixelMP, ThinkPixelMEM, and optional ThinkPixelGR boundaries.
 - `portable-snapshot-evaluation.md` records the portable-format decision and benchmark plan.
 - `supported-versions.md` is the compatibility policy.
+- `dependency-policy.md` defines dependency selection, approved sources, integrity, license classification, and exception requirements.
 - `adr/` contains accepted architecture decisions.
 - `contracts/` contains machine-readable and provider-facing contracts.
 - `phase-0-evidence.md` records validation evidence and remaining environment-dependent verification.
