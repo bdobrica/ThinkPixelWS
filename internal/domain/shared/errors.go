@@ -16,6 +16,8 @@ const (
 	CodeUnauthorized    ErrorCode = "unauthorized"
 	CodeForbidden       ErrorCode = "forbidden"
 	CodeExpired         ErrorCode = "expired"
+	CodeUnavailable     ErrorCode = "unavailable"
+	CodeTooLarge        ErrorCode = "too_large"
 	CodeInternal        ErrorCode = "internal"
 )
 

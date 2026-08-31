@@ -11,7 +11,9 @@ identity, validation, time, errors, integrity, and pagination:
   services can inject deterministic clocks.
 - `internal/domain/shared.Error` carries a stable code, a caller-safe message,
   and an optional wrapped internal cause. Delivery adapters map these codes to
-  transport-specific responses without exposing causes.
+  transport-specific responses without exposing causes. Codes cover invalid
+  input, authentication/authorization, absence, conflict, expiry, temporary
+  unavailability, oversized input, and internal failure.
 - `internal/domain/shared.BoundedString` validates Unicode UTF-8, requires NFC,
   rejects control characters, and measures bounds in Unicode code points. The
   direct `golang.org/x/text` dependency supplies the maintained Unicode NFC
