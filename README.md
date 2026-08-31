@@ -31,7 +31,8 @@ See the [normative architecture](docs/architecture.md) and [documentation index]
 
 ## Development
 
-Requirements for the current documentation and contract baseline are Python 3, Node.js/npm, and Git.
+Requirements are Go 1.25.14, Python 3, Node.js/npm, and Git. The Go module
+also declares the exact supported toolchain for automatic selection by the Go command.
 
 Run the aggregate repository gate:
 

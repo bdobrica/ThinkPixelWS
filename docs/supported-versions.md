@@ -4,7 +4,7 @@ Phase 0 pins the intended first implementation/test baseline. A version becomes 
 
 | Component | Baseline | Policy |
 |---|---|---|
-| Go | 1.25.x | latest security patch; N and N-1 after implementation CI proves both |
+| Go | 1.25.14 | latest security patch in the 1.25 line; N and N-1 after implementation CI proves both |
 | PostgreSQL | 17.x | latest minor; PostgreSQL 16 may be added after migration/integration tests |
 | Kubernetes | 1.34.x | latest patch; N and N-1 after conformance/integration tests |
 | CSI spec | 1.11 | driver must expose required capabilities through Kubernetes objects |
