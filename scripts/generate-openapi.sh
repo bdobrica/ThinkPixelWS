@@ -13,4 +13,7 @@ go tool ogen \
   --clean \
   docs/contracts/openapi.yaml
 
-patch -s -d api/openapi -p1 < scripts/ogen-v1.24.0.patch
+if ! grep -q 'github.com/ogen-go/ogen/validate' \
+  api/openapi/oas_create_materialization_component_access_item_equal_gen.go; then
+  patch --batch --forward -s -d api/openapi -p1 < scripts/ogen-v1.24.0.patch
+fi

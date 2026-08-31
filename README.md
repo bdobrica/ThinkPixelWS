@@ -41,11 +41,14 @@ make help
 make verify
 ```
 
-This validates Phase 0 cross-document and schema invariants, lints the OpenAPI contract, and checks the Git diff. See [`PLAN.md`](PLAN.md) for implementation intent and [`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) for recorded verification evidence.
+This runs formatting, vet, lint, unit, race, vulnerability, license, build, and
+contract validation. See [`PLAN.md`](PLAN.md) for implementation intent and
+[`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) for the Phase 0 evidence.
 
 The repository-root Makefile is the stable developer entry point. Use
-`make generate` after changing generated inputs, `make check` for fast contract
-checks, and `make verify` for the aggregate repository gate.
+`make generate` after changing generated inputs, `make check` for fast source and
+contract checks, and `make verify` for the aggregate repository gate. Run
+`make help` for the independently runnable checks.
 
 ## Documentation
 

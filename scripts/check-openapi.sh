@@ -18,7 +18,10 @@ go tool ogen \
   --clean \
   docs/contracts/openapi.yaml
 
-patch -s -d "$generated" -p1 < scripts/ogen-v1.24.0.patch
+if ! grep -q 'github.com/ogen-go/ogen/validate' \
+  "$generated/oas_create_materialization_component_access_item_equal_gen.go"; then
+  patch --batch --forward -s -d "$generated" -p1 < scripts/ogen-v1.24.0.patch
+fi
 
 if ! diff -ru --exclude=.gitkeep api/openapi "$generated" >/dev/null; then
   echo "openapi: generated Go code is stale; run ./scripts/generate-openapi.sh" >&2

@@ -56,6 +56,7 @@ their standard terms are unmodified:
 - `BSD-3-Clause`
 - `ISC`
 - `MIT`
+- `MIT-0`
 - `Unicode-3.0`
 - `Zlib`
 
@@ -96,7 +97,7 @@ covered by an explicitly approved time-bounded risk acceptance before release.
 End-of-life dependencies MUST NOT be introduced. Dependency and base-image updates
 SHOULD be reviewed regularly and expedited for relevant security fixes.
 
-Release artifacts MUST include dependency attribution and an SBOM. Automation for
-these checks is introduced by ENG-011; until then, reviewers apply this policy to
-each dependency change and `go mod verify` supplies the available module-integrity
-evidence.
+Release artifacts MUST include dependency attribution and an SBOM. The repository
+verification gate enforces the approved dependency-license list and scans reachable
+Go code for known vulnerabilities. Artifact attribution and SBOM production remain
+release-packaging responsibilities.

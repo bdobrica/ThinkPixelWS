@@ -1,6 +1,9 @@
 package telemetry
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+)
 
 // NewPrometheusRegistry returns an isolated registry with the standard Go
 // runtime and process collectors. Callers register service-specific collectors
@@ -11,8 +14,8 @@ import "github.com/prometheus/client_golang/prometheus"
 func NewPrometheusRegistry() *prometheus.Registry {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(
-		prometheus.NewGoCollector(),
-		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 	return registry
 }
