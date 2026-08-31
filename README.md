@@ -37,10 +37,15 @@ also declares the exact supported toolchain for automatic selection by the Go co
 Run the aggregate repository gate:
 
 ```sh
+make help
 make verify
 ```
 
 This validates Phase 0 cross-document and schema invariants, lints the OpenAPI contract, and checks the Git diff. See [`PLAN.md`](PLAN.md) for implementation intent and [`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) for recorded verification evidence.
+
+The repository-root Makefile is the stable developer entry point. Use
+`make generate` after changing generated inputs, `make check` for fast contract
+checks, and `make verify` for the aggregate repository gate.
 
 ## Documentation
 
