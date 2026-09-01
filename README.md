@@ -77,7 +77,8 @@ interfaces; see the [service image guide](docs/service-image.md).
 - [Enterprise integration contracts](docs/enterprise-integration.md)
 - [API and schemas](docs/contracts/)
 - [Accepted architecture decisions](docs/adr/)
-- [Operations and compatibility](docs/operations.md)
+- [Operations](docs/operations.md)
+- [Supported versions and compatibility targets](docs/supported-versions.md)
 
 ## ThinkPixel platform
 
