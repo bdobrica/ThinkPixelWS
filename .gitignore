@@ -1,3 +1,51 @@
 # Local cross-repository audit input; its findings are incorporated into tracked docs.
 /AUDIT_SUMMARY.md
 /ALIGNMENT.md
+
+# Local configuration, credentials, tokens, and key material.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.token
+*.credentials
+*.kubeconfig
+kubeconfig
+kubeconfig.*
+.kube/
+.aws/
+.azure/
+.config/gcloud/
+.docker/config.json
+.git-credentials
+.netrc
+.npmrc
+.pypirc
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Workspace state, portable snapshots, and application/browser profiles.
+.thinkpixelws/
+workspace-snapshots/
+portable-snapshots/
+browser-profiles/
+chrome-profile/
+chromium-profile/
+firefox-profile/
+User Data/
+
+# Repository-local runtime and test data. Committed, sanitized fixtures belong in testdata/.
+.cache/
+.local/
+.tmp/
+tmp/
+var/
+data/
+local-data/
+test-results/
+coverage/
+*.coverprofile

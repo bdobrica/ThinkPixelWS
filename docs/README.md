@@ -19,6 +19,7 @@ This directory contains the normative Phase 0 architecture baseline.
 - `http-server.md` defines the baseline listeners, middleware, health, metrics, limits, errors, and shutdown behavior.
 - `service-image.md` defines the hardened non-root service container and runtime expectations.
 - `continuous-integration.md` defines CI triggers, verification jobs, dependency pinning, and least-privilege controls.
+- `repository-hygiene.md` documents controls that keep credentials and local Workspace state out of Git.
 - `openapi-development.md` defines reproducible contract generation, validation, and drift checks.
 - `adr/` contains accepted architecture decisions.
 - `contracts/` contains machine-readable and provider-facing contracts.

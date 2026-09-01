@@ -8,7 +8,7 @@ GO_LICENSES_VERSION ?= v2.0.1
 APPROVED_LICENSES := Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MIT,MIT-0,Unicode-3.0,Zlib
 COMPOSE ?= docker compose
 
-.PHONY: help generate generate-openapi check check-ci check-openapi check-service-image format vet lint unit race vulnerability license build image postgres-up postgres-down migrate validate validate-phase0 verify
+.PHONY: help generate generate-openapi check check-ci check-repository-hygiene check-openapi check-service-image format vet lint unit race vulnerability license build image postgres-up postgres-down migrate validate validate-phase0 verify
 
 help:
 	@printf '%s\n' \
@@ -16,6 +16,7 @@ help:
 		'  make generate        Regenerate all committed derived artifacts' \
 		'  make check           Run fast source and contract checks' \
 		'  make check-ci        Check CI pinning and least-privilege invariants' \
+		'  make check-repository-hygiene Reject tracked credentials and local state' \
 		'  make verify          Run the aggregate repository verification gate' \
 		'  make format          Check Go source formatting' \
 		'  make vet             Run Go vet' \
@@ -39,10 +40,14 @@ generate: generate-openapi
 generate-openapi:
 	./scripts/generate-openapi.sh
 
-check: format vet lint check-ci check-openapi check-service-image
+check: format vet lint check-ci check-repository-hygiene check-openapi check-service-image
 
 check-ci:
 	./scripts/check-ci.sh
+
+check-repository-hygiene:
+	./scripts/check-repository-hygiene.py --self-test
+	./scripts/check-repository-hygiene.py
 
 check-openapi:
 	./scripts/check-openapi.sh
