@@ -116,7 +116,7 @@ Completion metadata format:
 - [x] ENG-015 Add CI with pinned/least-privilege jobs where practical. — completed 2026-09-01, commit cbe8064, evidence: `./scripts/check-ci.sh`; `GOTOOLCHAIN=go1.25.14 make verify`; `docker build --tag thinkpixelws:eng015 .`; `git diff --check`
 - [x] ENG-016 Add repository hygiene checks preventing Workspace snapshots, source credentials, browser profiles, kubeconfigs, tokens, keys, and local test data from Git. — completed 2026-09-01, commit fadf8b9, evidence: `make check-repository-hygiene`; staged-tree hygiene scan; ignore-rule probes; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
 - [x] ENG-017 Start `docs/supported-versions.md`. — completed 2026-09-01, commit 8b0915d, evidence: `./scripts/validate-phase0.sh`; `./scripts/check-ci.sh`; `./scripts/check-service-image.sh`; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
-- [ ] ENG-018 Verify clean checkout baseline.
+- [x] ENG-018 Verify clean checkout baseline. — completed 2026-09-01, commit 6f2bba3, evidence: clean native-Linux clone at commit f2cdc68 plus portability fixes; clean-clone `GOTOOLCHAIN=go1.25.14 make verify`; clean-clone `docker build --tag thinkpixelws:eng018-clean .`; `git diff --check`
 - [ ] ENG-019 Publish Phase 1 evidence and commit.
 
 ---
