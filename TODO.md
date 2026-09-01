@@ -115,7 +115,7 @@ Completion metadata format:
 - [x] ENG-014 Create hardened non-root service image. — completed 2026-09-01, commit 1252ce7, evidence: `./scripts/check-service-image.sh`; `docker build --tag thinkpixelws:eng014 .`; image metadata `65532:65532`, exec entrypoint, 4.6 MB; read-only/cap-drop/no-new-privileges smoke test `/livez` and `/metrics`; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
 - [x] ENG-015 Add CI with pinned/least-privilege jobs where practical. — completed 2026-09-01, commit cbe8064, evidence: `./scripts/check-ci.sh`; `GOTOOLCHAIN=go1.25.14 make verify`; `docker build --tag thinkpixelws:eng015 .`; `git diff --check`
 - [x] ENG-016 Add repository hygiene checks preventing Workspace snapshots, source credentials, browser profiles, kubeconfigs, tokens, keys, and local test data from Git. — completed 2026-09-01, commit fadf8b9, evidence: `make check-repository-hygiene`; staged-tree hygiene scan; ignore-rule probes; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
-- [ ] ENG-017 Start `docs/supported-versions.md`.
+- [x] ENG-017 Start `docs/supported-versions.md`. — completed 2026-09-01, commit 8b0915d, evidence: `./scripts/validate-phase0.sh`; `./scripts/check-ci.sh`; `./scripts/check-service-image.sh`; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
 - [ ] ENG-018 Verify clean checkout baseline.
 - [ ] ENG-019 Publish Phase 1 evidence and commit.
 
