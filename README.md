@@ -42,7 +42,9 @@ make verify
 ```
 
 This runs formatting, vet, lint, unit, race, vulnerability, license, build, and
-contract validation. See [`PLAN.md`](PLAN.md) for implementation intent and
+contract validation. CI runs the same gate with pinned, read-only automation;
+see the [continuous-integration guide](docs/continuous-integration.md). See
+[`PLAN.md`](PLAN.md) for implementation intent and
 [`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) for the Phase 0 evidence.
 
 Local PostgreSQL development additionally requires Docker with Compose. Use

@@ -18,6 +18,7 @@ This directory contains the normative Phase 0 architecture baseline.
 - `shared-primitives.md` defines UUIDv7, clock, error, bounded-string, digest, and authenticated-cursor foundations.
 - `http-server.md` defines the baseline listeners, middleware, health, metrics, limits, errors, and shutdown behavior.
 - `service-image.md` defines the hardened non-root service container and runtime expectations.
+- `continuous-integration.md` defines CI triggers, verification jobs, dependency pinning, and least-privilege controls.
 - `openapi-development.md` defines reproducible contract generation, validation, and drift checks.
 - `adr/` contains accepted architecture decisions.
 - `contracts/` contains machine-readable and provider-facing contracts.
