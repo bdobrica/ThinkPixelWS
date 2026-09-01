@@ -24,5 +24,6 @@ This directory contains the normative Phase 0 architecture baseline.
 - `adr/` contains accepted architecture decisions.
 - `contracts/` contains machine-readable and provider-facing contracts.
 - `phase-0-evidence.md` records validation evidence and remaining environment-dependent verification.
+- `phase-1-evidence.md` records the engineering-foundation gates and clean-checkout verification.
 
 Normative words such as MUST, MUST NOT, SHOULD, and MAY are interpreted as described by RFC 2119/RFC 8174.

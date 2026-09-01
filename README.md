@@ -47,7 +47,8 @@ the gate also rejects tracked credentials and local Workspace/profile state.
 See the [continuous-integration guide](docs/continuous-integration.md) and
 [repository-hygiene guide](docs/repository-hygiene.md). See
 [`PLAN.md`](PLAN.md) for implementation intent and
-[`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) for the Phase 0 evidence.
+[`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) and
+[`docs/phase-1-evidence.md`](docs/phase-1-evidence.md) for phase evidence.
 
 Local PostgreSQL development additionally requires Docker with Compose. Use
 `make postgres-up`, then explicitly apply migrations with `make migrate`. See
