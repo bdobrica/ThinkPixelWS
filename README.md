@@ -50,6 +50,10 @@ Local PostgreSQL development additionally requires Docker with Compose. Use
 the [database development guide](docs/database-development.md) for configuration
 and lifecycle details.
 
+The `thinkpixelwsctl` skeleton calls the public API for Workspace discovery.
+See the [command-line client guide](docs/cli.md) for its commands and secure
+token-file configuration.
+
 The repository-root Makefile is the stable developer entry point. Use
 `make generate` after changing generated inputs, `make check` for fast source and
 contract checks, and `make verify` for the aggregate repository gate. Run
