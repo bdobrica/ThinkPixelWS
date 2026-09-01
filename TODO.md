@@ -111,7 +111,7 @@ Completion metadata format:
 - [x] ENG-010 Create repository-root Makefile. — completed 2026-08-31, commit 43d6129, evidence: `make help`; `make generate`; `make check`; `make verify`; `GOTOOLCHAIN=go1.25.14 go test ./...`; `GOTOOLCHAIN=go1.25.14 go vet ./...`; `GOTOOLCHAIN=go1.25.14 go mod verify`; `git diff --check`
 - [x] ENG-011 Add format/vet/lint/unit/race/vulnerability/license/build verification. — completed 2026-08-31, commit f9e92a0, evidence: `make format`; `make vet`; `make lint`; `make unit`; `make race`; `make vulnerability`; `make license`; `make build`; `make verify`; `git diff --check`
 - [x] ENG-012 Add PostgreSQL development dependency and explicit migration command. — completed 2026-09-01, commit 4016bdb, evidence: `docker compose config --quiet`; `THINKPIXELWS_DEV_POSTGRES_PORT=65432 make migrate` (applied, then `no change`); `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
-- [ ] ENG-013 Create `thinkpixelwsctl` CLI skeleton using API client.
+- [x] ENG-013 Create `thinkpixelwsctl` CLI skeleton using API client. — completed 2026-09-01, commit a2acf38, evidence: `GOTOOLCHAIN=go1.25.14 go test ./cmd/thinkpixelwsctl`; `GOTOOLCHAIN=go1.25.14 go vet ./cmd/thinkpixelwsctl`; `GOTOOLCHAIN=go1.25.14 go build ./cmd/thinkpixelwsctl`; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
 - [ ] ENG-014 Create hardened non-root service image.
 - [ ] ENG-015 Add CI with pinned/least-privilege jobs where practical.
 - [ ] ENG-016 Add repository hygiene checks preventing Workspace snapshots, source credentials, browser profiles, kubeconfigs, tokens, keys, and local test data from Git.
