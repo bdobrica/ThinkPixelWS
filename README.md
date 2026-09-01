@@ -59,6 +59,10 @@ The repository-root Makefile is the stable developer entry point. Use
 contract checks, and `make verify` for the aggregate repository gate. Run
 `make help` for the independently runnable checks.
 
+Build the hardened, non-root service container with `make image`. Runtime
+configuration must explicitly bind the public and metrics listeners to container
+interfaces; see the [service image guide](docs/service-image.md).
+
 ## Documentation
 
 - [Platform role and ownership boundary](ALIGNMENT.md)

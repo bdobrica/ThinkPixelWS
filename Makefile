@@ -8,7 +8,7 @@ GO_LICENSES_VERSION ?= v2.0.1
 APPROVED_LICENSES := Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MIT,MIT-0,Unicode-3.0,Zlib
 COMPOSE ?= docker compose
 
-.PHONY: help generate generate-openapi check check-openapi format vet lint unit race vulnerability license build postgres-up postgres-down migrate validate validate-phase0 verify
+.PHONY: help generate generate-openapi check check-openapi check-service-image format vet lint unit race vulnerability license build image postgres-up postgres-down migrate validate validate-phase0 verify
 
 help:
 	@printf '%s\n' \
@@ -24,6 +24,8 @@ help:
 		'  make vulnerability   Scan reachable code with pinned govulncheck' \
 		'  make license         Enforce the dependency license allowlist' \
 		'  make build           Build all Go packages' \
+		'  make image           Build the hardened service container image' \
+		'  make check-service-image Check service image hardening invariants' \
 		'  make postgres-up     Start the local PostgreSQL development dependency' \
 		'  make postgres-down   Stop the local PostgreSQL development dependency' \
 		'  make migrate         Explicitly apply all pending database migrations' \
@@ -36,10 +38,13 @@ generate: generate-openapi
 generate-openapi:
 	./scripts/generate-openapi.sh
 
-check: format vet lint check-openapi
+check: format vet lint check-openapi check-service-image
 
 check-openapi:
 	./scripts/check-openapi.sh
+
+check-service-image:
+	./scripts/check-service-image.sh
 
 format:
 	@test -z "$$(gofmt -l $$(git ls-files -- '*.go'))" || { gofmt -d $$(git ls-files -- '*.go'); echo 'Go files are not formatted.' >&2; exit 1; }
@@ -64,6 +69,9 @@ license:
 
 build:
 	$(GO) build $(GO_PACKAGES)
+
+image:
+	docker build --tag thinkpixelws:dev .
 
 postgres-up:
 	$(COMPOSE) up -d --wait postgres

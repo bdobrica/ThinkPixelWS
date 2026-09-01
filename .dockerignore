@@ -1,0 +1,9 @@
+.git
+.agents
+.codex
+.eng*-cache
+.eng*-tmp
+thinkpixelws
+TODO.md
+test
+deploy
