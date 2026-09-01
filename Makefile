@@ -6,8 +6,9 @@ STATICCHECK_VERSION ?= v0.7.0
 GOVULNCHECK_VERSION ?= v1.7.0
 GO_LICENSES_VERSION ?= v2.0.1
 APPROVED_LICENSES := Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MIT,MIT-0,Unicode-3.0,Zlib
+COMPOSE ?= docker compose
 
-.PHONY: help generate generate-openapi check check-openapi format vet lint unit race vulnerability license build validate validate-phase0 verify
+.PHONY: help generate generate-openapi check check-openapi format vet lint unit race vulnerability license build postgres-up postgres-down migrate validate validate-phase0 verify
 
 help:
 	@printf '%s\n' \
@@ -23,6 +24,9 @@ help:
 		'  make vulnerability   Scan reachable code with pinned govulncheck' \
 		'  make license         Enforce the dependency license allowlist' \
 		'  make build           Build all Go packages' \
+		'  make postgres-up     Start the local PostgreSQL development dependency' \
+		'  make postgres-down   Stop the local PostgreSQL development dependency' \
+		'  make migrate         Explicitly apply all pending database migrations' \
 		'  make generate-openapi Regenerate the OpenAPI Go package' \
 		'  make check-openapi    Validate OpenAPI and detect generated-code drift' \
 		'  make validate-phase0  Validate Phase 0 schemas, documentation, and contracts'
@@ -60,6 +64,15 @@ license:
 
 build:
 	$(GO) build $(GO_PACKAGES)
+
+postgres-up:
+	$(COMPOSE) up -d --wait postgres
+
+postgres-down:
+	$(COMPOSE) down
+
+migrate:
+	$(COMPOSE) run --rm migrate
 
 validate: validate-phase0
 

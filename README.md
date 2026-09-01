@@ -45,6 +45,11 @@ This runs formatting, vet, lint, unit, race, vulnerability, license, build, and
 contract validation. See [`PLAN.md`](PLAN.md) for implementation intent and
 [`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) for the Phase 0 evidence.
 
+Local PostgreSQL development additionally requires Docker with Compose. Use
+`make postgres-up`, then explicitly apply migrations with `make migrate`. See
+the [database development guide](docs/database-development.md) for configuration
+and lifecycle details.
+
 The repository-root Makefile is the stable developer entry point. Use
 `make generate` after changing generated inputs, `make check` for fast source and
 contract checks, and `make verify` for the aggregate repository gate. Run
