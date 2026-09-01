@@ -10,7 +10,7 @@ The primary security invariant is:
 
 > **Workspace membership describes context. It does not grant runtime authority.**
 
-ThinkPixelWS keeps runtime authority, source-system credentials, model access, agent execution, long-term memory, and software qualification outside the Workspace boundary. The repository's precise role in the platform is documented in [`ALIGNMENT.md`](ALIGNMENT.md).
+ThinkPixelWS keeps runtime authority, source-system credentials, model access, agent execution, long-term memory, and software qualification outside the Workspace boundary. The repository's precise role in the platform is documented in the [normative architecture](docs/architecture.md).
 
 ## Status
 
@@ -69,7 +69,7 @@ interfaces; see the [service image guide](docs/service-image.md).
 
 ## Documentation
 
-- [Platform role and ownership boundary](ALIGNMENT.md)
+- [Platform role and ownership boundary](docs/architecture.md)
 - [Implementation plan](PLAN.md)
 - [Release-candidate ledger](TODO.md)
 - [Architecture](docs/architecture.md)
