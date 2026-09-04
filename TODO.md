@@ -123,7 +123,7 @@ Completion metadata format:
 
 ## Phase 2 — Durable Workspace domain and metadata
 
-- [ ] DB-001 Add migration framework and tenant schema.
+- [x] DB-001 Add migration framework and tenant schema. — completed 2026-09-04, commit d9ac1b5, evidence: `./scripts/check-migrations.sh`; PostgreSQL 17.6 migration up/down/up and tenant constraint/ownership checks; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
 - [ ] DB-002 Add Workspace table/domain/repository.
 - [ ] DB-003 Add Workspace lifecycle transitions and optimistic state version.
 - [ ] DB-004 Add WorkspaceGeneration table/domain.
