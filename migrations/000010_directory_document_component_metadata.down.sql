@@ -1,0 +1,2 @@
+DROP TABLE thinkpixelws.document_collection_component_metadata;
+DROP TABLE thinkpixelws.directory_component_metadata;
