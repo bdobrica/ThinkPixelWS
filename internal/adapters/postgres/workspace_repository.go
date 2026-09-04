@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/bdobrica/ThinkPixelWS/internal/ports"
@@ -72,6 +74,49 @@ WHERE tenant_id = $1 AND workspace_id = $2`, tenantID, workspaceID)
 		return domain.Workspace{}, fmt.Errorf("select workspace: %w", err)
 	}
 	return workspace, nil
+}
+
+func (repository *WorkspaceRepository) TransitionState(
+	ctx context.Context,
+	tenantID, workspaceID uuid.UUID,
+	current, next domain.WorkspaceState,
+	expectedVersion uint64,
+	transitionedAt time.Time,
+) error {
+	if tenantID == uuid.Nil || workspaceID == uuid.Nil {
+		return errors.New("tenant and workspace IDs are required")
+	}
+	if expectedVersion < 1 || expectedVersion >= math.MaxInt64 {
+		return errors.New("expected workspace state version is outside the supported range")
+	}
+	if !current.CanTransitionTo(next) {
+		return fmt.Errorf("%w: %s to %s", domain.ErrInvalidWorkspaceStateTransition, current, next)
+	}
+	if transitionedAt.IsZero() {
+		return errors.New("workspace transition time is required")
+	}
+
+	result, err := repository.db.ExecContext(ctx, `
+UPDATE thinkpixelws.workspaces
+SET lifecycle_state = $5,
+    state_version = state_version + 1,
+    updated_at = $6
+WHERE tenant_id = $1
+  AND workspace_id = $2
+  AND lifecycle_state = $3
+  AND state_version = $4
+  AND updated_at <= $6`, tenantID, workspaceID, current, expectedVersion, next, transitionedAt.UTC())
+	if err != nil {
+		return fmt.Errorf("transition workspace state: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read workspace transition result: %w", err)
+	}
+	if affected != 1 {
+		return ports.ErrWorkspaceStateConflict
+	}
+	return nil
 }
 
 func scanWorkspace(row rowScanner) (domain.Workspace, error) {

@@ -1,11 +1,15 @@
 package postgres
 
 import (
+	"context"
+	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
+	"github.com/bdobrica/ThinkPixelWS/internal/ports"
 	"github.com/google/uuid"
 )
 
@@ -22,6 +26,72 @@ func TestWorkspaceRepositoryRejectsMismatchedTenantScope(t *testing.T) {
 		t.Fatal("expected mismatched tenant scope to be rejected")
 	}
 }
+
+func TestWorkspaceRepositoryTransitionStateUsesTenantScopedCompareAndSwap(t *testing.T) {
+	t.Parallel()
+
+	workspace := validStoredWorkspace(t)
+	transitionedAt := workspace.UpdatedAt.Add(time.Second)
+	db := &transitionDatabase{result: transitionResult{affected: 1}}
+	repository := NewWorkspaceRepository(db)
+
+	err := repository.TransitionState(t.Context(), workspace.TenantID, workspace.ID,
+		domain.WorkspaceCreating, domain.WorkspaceReady, 1, transitionedAt)
+	if err != nil {
+		t.Fatalf("transition state: %v", err)
+	}
+	for _, predicate := range []string{"tenant_id = $1", "workspace_id = $2", "lifecycle_state = $3", "state_version = $4"} {
+		if !strings.Contains(db.query, predicate) {
+			t.Fatalf("transition query is missing compare-and-swap predicate %q", predicate)
+		}
+	}
+	if len(db.arguments) != 6 || db.arguments[0] != workspace.TenantID || db.arguments[1] != workspace.ID || db.arguments[3] != uint64(1) {
+		t.Fatalf("unexpected transition arguments: %#v", db.arguments)
+	}
+}
+
+func TestWorkspaceRepositoryTransitionStateReportsConflict(t *testing.T) {
+	t.Parallel()
+
+	workspace := validStoredWorkspace(t)
+	repository := NewWorkspaceRepository(&transitionDatabase{result: transitionResult{affected: 0}})
+	err := repository.TransitionState(t.Context(), workspace.TenantID, workspace.ID,
+		domain.WorkspaceCreating, domain.WorkspaceReady, 1, workspace.UpdatedAt)
+	if !errors.Is(err, ports.ErrWorkspaceStateConflict) {
+		t.Fatalf("expected state conflict, got %v", err)
+	}
+}
+
+func TestWorkspaceRepositoryTransitionStateRejectsInvalidEdge(t *testing.T) {
+	t.Parallel()
+
+	workspace := validStoredWorkspace(t)
+	repository := NewWorkspaceRepository(&transitionDatabase{})
+	err := repository.TransitionState(t.Context(), workspace.TenantID, workspace.ID,
+		domain.WorkspaceCreating, domain.WorkspaceArchived, 1, workspace.UpdatedAt)
+	if !errors.Is(err, domain.ErrInvalidWorkspaceStateTransition) {
+		t.Fatalf("expected invalid transition, got %v", err)
+	}
+}
+
+type transitionDatabase struct {
+	query     string
+	arguments []any
+	result    sql.Result
+}
+
+func (database *transitionDatabase) ExecContext(_ context.Context, query string, arguments ...any) (sql.Result, error) {
+	database.query = query
+	database.arguments = arguments
+	return database.result, nil
+}
+
+func (*transitionDatabase) QueryRowContext(context.Context, string, ...any) *sql.Row { return nil }
+
+type transitionResult struct{ affected int64 }
+
+func (transitionResult) LastInsertId() (int64, error)        { return 0, errors.New("unsupported") }
+func (result transitionResult) RowsAffected() (int64, error) { return result.affected, nil }
 
 func TestScanWorkspace(t *testing.T) {
 	t.Parallel()

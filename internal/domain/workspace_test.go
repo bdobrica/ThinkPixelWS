@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"errors"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -41,6 +43,80 @@ func TestNewWorkspace(t *testing.T) {
 	if workspace.CreatedAt.Location() != time.UTC || !workspace.CreatedAt.Equal(now) {
 		t.Fatalf("creation time was not normalized to UTC: %v", workspace.CreatedAt)
 	}
+}
+
+func TestWorkspaceLifecycleTransitions(t *testing.T) {
+	t.Parallel()
+
+	edges := map[WorkspaceState][]WorkspaceState{
+		WorkspaceCreating:  {WorkspaceReady, WorkspaceDegraded},
+		WorkspaceDegraded:  {WorkspaceReady},
+		WorkspaceReady:     {WorkspaceArchiving, WorkspaceDeleting},
+		WorkspaceArchiving: {WorkspaceArchived, WorkspaceDegraded},
+		WorkspaceArchived:  {WorkspaceRestoring, WorkspaceDeleting},
+		WorkspaceRestoring: {WorkspaceReady, WorkspaceDegraded},
+		WorkspaceDeleting:  {WorkspaceDeleted},
+		WorkspaceDeleted:   {},
+	}
+	for current, nextStates := range edges {
+		for _, next := range nextStates {
+			if !current.CanTransitionTo(next) {
+				t.Fatalf("expected transition %s to %s", current, next)
+			}
+		}
+	}
+	for current := range edges {
+		for next := range edges {
+			want := false
+			for _, allowed := range edges[current] {
+				want = want || next == allowed
+			}
+			if got := current.CanTransitionTo(next); got != want {
+				t.Fatalf("transition %s to %s: got %t, want %t", current, next, got, want)
+			}
+		}
+	}
+}
+
+func TestWorkspaceTransitionStateUsesExpectedVersion(t *testing.T) {
+	t.Parallel()
+
+	workspace := validDomainWorkspace(t)
+	now := workspace.UpdatedAt.Add(time.Second)
+	transitioned, err := workspace.TransitionState(WorkspaceReady, 1, now)
+	if err != nil {
+		t.Fatalf("transition state: %v", err)
+	}
+	if transitioned.State != WorkspaceReady || transitioned.StateVersion != 2 || !transitioned.UpdatedAt.Equal(now) {
+		t.Fatalf("unexpected transitioned workspace: %#v", transitioned)
+	}
+	if _, err := workspace.TransitionState(WorkspaceReady, 2, now); !errors.Is(err, ErrWorkspaceStateVersionConflict) {
+		t.Fatalf("expected version conflict, got %v", err)
+	}
+	if _, err := workspace.TransitionState(WorkspaceArchived, 1, now); !errors.Is(err, ErrInvalidWorkspaceStateTransition) {
+		t.Fatalf("expected invalid transition, got %v", err)
+	}
+	workspace.StateVersion = math.MaxInt64
+	if _, err := workspace.TransitionState(WorkspaceReady, math.MaxInt64, now); err == nil {
+		t.Fatal("expected exhausted state version to be rejected")
+	}
+}
+
+func validDomainWorkspace(t *testing.T) Workspace {
+	t.Helper()
+	tenantID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspaceID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace, err := (NewWorkspace{TenantID: tenantID, ID: workspaceID, Name: "workspace", Owner: Owner{Kind: OwnerUser, ID: "owner"}}).Workspace(time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return workspace
 }
 
 func TestNewWorkspaceRejectsInvalidInput(t *testing.T) {

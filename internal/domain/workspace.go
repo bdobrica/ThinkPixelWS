@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -19,6 +20,11 @@ const (
 )
 
 var workspaceNamePattern = regexp.MustCompile(`^[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+
+var (
+	ErrInvalidWorkspaceStateTransition = errors.New("invalid workspace state transition")
+	ErrWorkspaceStateVersionConflict   = errors.New("workspace state version conflict")
+)
 
 type WorkspaceState string
 
@@ -122,7 +128,7 @@ func (workspace Workspace) Validate() error {
 	if strings.TrimSpace(workspace.Owner.ID) != workspace.Owner.ID || workspace.Owner.ID == "" || utf8.RuneCountInString(workspace.Owner.ID) > maxOwnerIDLength {
 		return errors.New("workspace owner ID is invalid")
 	}
-	if !workspace.State.valid() || workspace.StateVersion < 1 {
+	if !workspace.State.valid() || workspace.StateVersion < 1 || workspace.StateVersion > math.MaxInt64 {
 		return errors.New("workspace state is invalid")
 	}
 	if !workspace.Classification.valid() {
@@ -145,6 +151,51 @@ func (workspace Workspace) Validate() error {
 		return errors.New("workspace timestamps are invalid")
 	}
 	return nil
+}
+
+// TransitionState applies one accepted Workspace lifecycle edge. The expected
+// version makes callers acknowledge the state they observed before persisting
+// the transition with a repository compare-and-swap.
+func (workspace Workspace) TransitionState(next WorkspaceState, expectedVersion uint64, now time.Time) (Workspace, error) {
+	if expectedVersion != workspace.StateVersion {
+		return Workspace{}, ErrWorkspaceStateVersionConflict
+	}
+	if !workspace.State.CanTransitionTo(next) {
+		return Workspace{}, fmt.Errorf("%w: %s to %s", ErrInvalidWorkspaceStateTransition, workspace.State, next)
+	}
+	if workspace.StateVersion >= math.MaxInt64 {
+		return Workspace{}, errors.New("workspace state version exhausted")
+	}
+	now = now.UTC()
+	if now.Before(workspace.UpdatedAt) {
+		return Workspace{}, errors.New("workspace transition time precedes last update")
+	}
+
+	workspace.State = next
+	workspace.StateVersion++
+	workspace.UpdatedAt = now
+	return workspace, nil
+}
+
+func (state WorkspaceState) CanTransitionTo(next WorkspaceState) bool {
+	switch state {
+	case WorkspaceCreating:
+		return next == WorkspaceReady || next == WorkspaceDegraded
+	case WorkspaceDegraded:
+		return next == WorkspaceReady
+	case WorkspaceReady:
+		return next == WorkspaceArchiving || next == WorkspaceDeleting
+	case WorkspaceArchiving:
+		return next == WorkspaceArchived || next == WorkspaceDegraded
+	case WorkspaceArchived:
+		return next == WorkspaceRestoring || next == WorkspaceDeleting
+	case WorkspaceRestoring:
+		return next == WorkspaceReady || next == WorkspaceDegraded
+	case WorkspaceDeleting:
+		return next == WorkspaceDeleted
+	default:
+		return false
+	}
 }
 
 func (kind OwnerKind) valid() bool {
