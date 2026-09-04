@@ -24,7 +24,7 @@ PostgreSQL 17 is authoritative for control metadata; large content is stored by 
 | `workspace_forks` | source Workspace/generation → child Workspace/generation, creator/time |
 | `retention_policies` | archive/delete/snapshot rules and legal-hold state/ref |
 | `workspace_events` | append-only ordered per Workspace sequence, UUID, type/version, subject refs, safe payload, time |
-| `audit_events` | append-only actor/action/target/decision/outcome/request/trace/time; safe metadata only |
+| `audit_events` | append-only actor/action/target/decision/outcome/request/trace/time; required transaction UUID couples the record to its business mutation; safe metadata only |
 | `idempotency_records` | tenant, principal, operation, key hash, request digest, status/result ref/expiry; unique scope tuple |
 | `outbox_messages` | event UUID, aggregate/order, type/version, safe payload, attempts/availability/published time |
 
