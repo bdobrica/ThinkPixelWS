@@ -1,0 +1,4 @@
+DROP TRIGGER component_classification_immutable ON thinkpixelws.component_classification_metadata;
+DROP FUNCTION thinkpixelws.reject_component_classification_mutation();
+DROP TABLE thinkpixelws.component_classification_metadata;
+DROP FUNCTION thinkpixelws.valid_classification_taints(text[]);
