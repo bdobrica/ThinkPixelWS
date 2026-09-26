@@ -1,10 +1,10 @@
 # ThinkPixelWS Release-Candidate TODO
 
-This is the chronological implementation checklist for ThinkPixelWS.
+This is the implementation checklist for ThinkPixelWS.
 
-Execute the first unchecked item whose dependencies are complete.
+Current work selection follows the ThinkPixel platform [development alignment](https://github.com/bdobrica/ThinkPixel/blob/main/docs/development/ALIGNMENT.md), not simple checklist order. Choose the smallest coherent item or tightly coupled group that advances the active demo/RC path and whose dependencies are complete.
 
-An item is checked only after its acceptance evidence passes.
+An item is checked only after its stated capability has meaningful acceptance evidence.
 
 Follow the coding-agent and commit protocol in `PLAN.md`.
 
@@ -16,6 +16,28 @@ Status notation:
 Completion metadata format:
 
     — completed YYYY-MM-DD, commit <sha>, evidence: <commands/artifacts>
+
+---
+
+## Current demo track — durable work survives disposable compute
+
+This is a prioritization view over the existing TODOs, not a second implementation ledger. Do not duplicate completion state here.
+
+For the current ThinkPixel golden path, prefer the minimum subset needed to demonstrate:
+
+> AR receives a governed Workspace binding, modifies durable work, loses its sandbox, attaches or creates replacement compute, and continues from the same logical Workspace without carrying stale authority or long-lived credentials.
+
+Prioritize, as dependencies require:
+
+- **Minimal Workspace/API path:** `IAM-005`, `API-001`, `API-002`, `API-003` and only the persistence/auth work required by those APIs.
+- **Writable Materialization path:** `MAT-001`–`MAT-009`, `K8S-001`–`K8S-008`.
+- **Recovery after sandbox loss:** `REC-003`–`REC-005`.
+- **Minimal durable commit path:** `GEN-001`–`GEN-010`; provider snapshot work only where required by the chosen recovery path.
+- **AR integration:** `TAR-001`–`TAR-006`.
+- **Governed access:** `TAG-001`, `TAG-003`–`TAG-010` when AG integration enters the golden path.
+- **Proof:** `E2E-005`–`E2E-007`, then `MVP-001`–`MVP-003`.
+
+The following remain valuable but should not block the first integrated demo/RC unless they become necessary to the chosen implementation: multi-repository breadth, forks, portable cross-target roaming, profiles, external bindings, broad source adapters, exhaustive chaos/load matrices, production packaging, and full release-promotion qualification.
 
 ---
 

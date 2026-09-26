@@ -2,11 +2,13 @@
 
 ## 1. Purpose
 
-This document is the implementation contract for taking ThinkPixelWS from an empty repository to a release candidate.
+This document describes the implementation path for ThinkPixelWS from an empty repository toward release-candidate capability.
+
+Cross-repository sequencing is governed by the ThinkPixel platform [development alignment](https://github.com/bdobrica/ThinkPixel/blob/main/docs/development/ALIGNMENT.md). This plan remains authoritative for WS architecture and intended capability, but its phase order does not require locally completing every WS feature before implementing the smallest WS slice needed by the active ThinkPixel demo/RC.
 
 ThinkPixelWS is the **Workspace Service** of the ThinkPixel stack. It provides durable, versioned, forkable, portable work contexts that can be materialized into disposable execution environments without coupling work state to a particular agent Session, Pod, sandbox, node, Kubernetes cluster, cloud, or execution technology.
 
-`TODO.md` is the chronological execution ledger. This plan explains why and how; the checklist records what remains, what was implemented, and what evidence verified each implementation step.
+`TODO.md` is the implementation ledger. This plan explains why and how; the checklist records what remains and what has been verified. Task selection follows the active platform demo/RC priority rather than mechanically selecting the first unchecked item.
 
 The core design thesis is:
 
@@ -31,6 +33,24 @@ A Workspace may outlive:
 - Kubernetes clusters;
 - application instances;
 - execution environments.
+
+### Current demo/RC priority
+
+For the current ThinkPixel golden path, WS should prove the narrowest useful form of its core thesis:
+
+> **A governed AR execution can modify durable work, lose its sandbox completely, receive fresh compute, and continue from the same logical Workspace.**
+
+Prefer work that directly enables this path:
+
+1. minimal durable Workspace metadata and APIs required by AR;
+2. one writable Kubernetes-backed Materialization path;
+3. the writer lease/fence needed to prevent stale execution from committing;
+4. checkpoint/commit behavior sufficient to preserve demonstrated work;
+5. an AR-consumable provider-neutral binding;
+6. replacement-sandbox reattach or restore;
+7. AG-scoped access when the integrated demo reaches governance wiring.
+
+The first integrated demo does **not** require full portable cross-target roaming, forks, browser/application profiles, multi-repository breadth, broad provider qualification, production HA, or exhaustive hardening. Those remain part of the WS product plan and can be pulled forward when a concrete demo requirement or discovered risk makes them necessary.
 
 ---
 
@@ -2039,6 +2059,8 @@ Where practical, RC evidence should include two independent Kubernetes/storage e
 
 ## 48. Delivery phases and exit gates
 
+The phases below describe capability growth; they are **not a strict current-work queue**. Work may be pulled forward across phase boundaries when it is the smallest coherent change needed by the active ThinkPixel demo/RC. Conversely, capabilities that do not unblock the active golden path may remain incomplete without blocking that demo/RC.
+
 ### Phase 0 — Decisions, threats, and contracts
 
 Define:
@@ -2163,7 +2185,7 @@ Implement:
 
 Exit when committed Workspace state can be reconstructed without dependence on the original hot volume.
 
-This is the first true ThinkPixelWS milestone.
+This is the first full portable-roaming ThinkPixelWS milestone. It is **not** required to block the first integrated ThinkPixel demo/RC when durable hot storage plus replacement-compute recovery is sufficient to prove the active golden path.
 
 ### Phase 7 — ThinkPixel integrated MVP
 
@@ -2277,19 +2299,19 @@ The following should not block the first RC:
 
 ## 50. Coding-agent operating instructions
 
-1. Read `README.md`, this file, and `TODO.md`; inspect repository status before editing.
+1. Read the ThinkPixel platform [development alignment](https://github.com/bdobrica/ThinkPixel/blob/main/docs/development/ALIGNMENT.md), then the repository-local material relevant to the task.
 2. Preserve unrelated user changes.
-3. Select the first unchecked TODO whose dependencies are complete.
-4. Work on one atomic item or tightly coupled contiguous group.
-5. Restate acceptance criteria internally before implementation.
-6. Identify tests before coding.
-7. If implementation invalidates an architectural assumption, update this plan in the same change.
-8. Implement tests, migrations, schemas, security behavior, telemetry, and documentation required by the item.
-9. Run narrow tests while developing.
-10. Run item-specific acceptance commands before checking an item.
-11. Run `make verify` before declaring a phase complete.
-12. A checkbox means implemented and verified.
-13. Record completion date, commit, and evidence in `TODO.md`.
+3. Select the smallest coherent TODO item or tightly coupled group that advances the requested task or active demo/RC path and whose dependencies are complete.
+4. Do not require earlier unrelated TODO items or whole phases to be complete merely because they appear first.
+5. Restate the relevant acceptance criteria internally before implementation.
+6. If implementation invalidates an architectural assumption, update or supersede the authoritative source in the same change.
+7. Implement the tests, migrations, schemas, security behavior, telemetry, and documentation needed to prove the changed path; do not broaden the task for speculative completeness.
+8. Run focused checks while developing.
+9. Run item-specific acceptance commands before checking an item.
+10. Run the relevant end-to-end/golden-path verification when the change affects it.
+11. Run `make verify` before declaring a phase or RC complete; unrelated failures should be reported rather than automatically expanding scope.
+12. A checkbox means the stated capability is implemented and verified to the level described by its acceptance evidence.
+13. Record durable evidence where it materially helps reproduce or qualify the capability.
 14. Never equate Workspace membership with authorization.
 15. Never store execution credentials intentionally in Workspace canonical state.
 16. Never make a PVC ID part of Workspace public identity.
@@ -2353,7 +2375,11 @@ At RC closure:
 
 ## 52. Release-candidate quality gate
 
-An RC requires:
+For the current demo-oriented phase, an RC is a **reproducible, clearly bounded capability** with known limitations documented. The active platform alignment determines which gates below are required for that RC.
+
+The full list below is the broader WS release-promotion/production-qualification gate. Items unrelated to the demonstrated capability may be deferred without preventing an initial integrated RC.
+
+Before an RC is promoted to a broadly qualified WS release, require as applicable:
 
 - every required TODO item completed with evidence;
 - clean build;

@@ -1,6 +1,6 @@
 # ThinkPixelWS documentation
 
-This directory contains the normative Phase 0 architecture baseline.
+This directory contains the normative architecture, contracts, and implementation evidence. Phase evidence records what was verified at the time; it does not define current development priority. Current WS sequencing is in the repository [`PLAN.md`](../PLAN.md) and [`TODO.md`](../TODO.md), subject to the ThinkPixel platform [development alignment](https://github.com/bdobrica/ThinkPixel/blob/main/docs/development/ALIGNMENT.md).
 
 - `architecture.md` defines system context, trust boundaries, vocabulary, invariants, state, concurrency, composition, durability, and lifecycle.
 - `security.md` defines the threat model, content-handling limits, credential/profile rules, authorization boundaries, and observability redaction.
