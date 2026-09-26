@@ -25,6 +25,7 @@ type storageFixture struct {
 	discovery               bool
 	discoveryCalls, deletes int
 	failDelete              bool
+	delayDelete             bool
 }
 
 func providerFixture(t *testing.T) (*Provider, *storageFixture, domain.Materialization) {
@@ -97,7 +98,12 @@ func providerFixture(t *testing.T) (*Provider, *storageFixture, domain.Materiali
 				return
 			}
 			f.deletes++
-			f.pvc = nil
+			if f.delayDelete {
+				now := metav1.Now()
+				f.pvc.DeletionTimestamp = &now
+			} else {
+				f.pvc = nil
+			}
 			json.NewEncoder(w).Encode(metav1.Status{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Status"}, Status: "Success", Code: 200})
 		default:
 			t.Errorf("unexpected method %s", r.Method)

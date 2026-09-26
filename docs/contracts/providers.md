@@ -59,6 +59,31 @@ type ProfileProvider interface {
 - Plaintext data keys are zeroizable, process-local, never logged/serialized, and have a bounded lifetime. Wrapped keys carry provider/key/version references only.
 - Profile handles and profile encryption domains are separate from ordinary Workspace content.
 
+## Materialization release
+
+The internal `materialization.Releaser` accepts an authorized, tenant-scoped ID.
+READY or ACTIVE transitions to RELEASING with a version check before provider
+deletion. Retries resume RELEASING; only confirmed storage absence permits
+RELEASED. A pending deletion returns RELEASING without an error. A RELEASED retry
+does no provider I/O. Missing bindings, replacement PVCs, and concurrent lifecycle
+changes fail explicitly; FAILED/FENCED records are not revived for cleanup.
+Kubernetes deletion uses the persisted PVC identity and resource-version
+preconditions, and never removes finalizers to force completion.
+
+Release deletes disposable hot storage only. It retains the Materialization
+record and its generation/binding references and has no dependency on canonical
+Workspace, generation, snapshot, blob, or key deletion. Uncommitted hot changes
+are not preserved by this operation. Callers must authorize their disposal or
+durably checkpoint/commit them first, detach execution and prevent reattachment,
+and enforce retention and lease policy. Sandbox replacement alone is not a
+reason to release a volume needed for continuation. Archive additionally requires
+a verified portable snapshot under ADR-0005.
+
+Repository mutations must commit independently with required audit/outbox;
+provider calls must not run inside a database transaction. This coordinator does
+not retire writer leases or implement runtime detachment, HTTP/process wiring,
+or terminal/orphan reconciliation. Those remain caller/integration duties.
+
 ## AR storage binding result
 
 The internal `materialization.BindingReader` resolves an already-authorized
