@@ -350,3 +350,16 @@ actual Pod mounting, live-cluster storage, or CSI behavior.
 
 For the inspected Raspberry Pi cluster and CSI backend assessment, see
 [homelab storage](homelab-storage.md).
+
+`internal/app/materialization.StatusReader` reads an already-authorized,
+tenant-scoped record and observes its bound storage through the configured
+provider. The result separates persisted lifecycle from PVC phase: Bound never
+promotes PREPARING to READY, and terminal states remain terminal. An unbound
+record returns no storage observation and makes no provider call. Missing PVCs
+(including after release), ownership/UID conflicts, and outages return the
+provider error alongside the persisted record, with no storage observation.
+The reader checks metadata again after provider I/O and rejects concurrent
+changes with a state conflict; callers may retry. This is not an atomic snapshot
+or lease/attachment authority. Polling never allocates, restores, releases, or
+changes metadata. HTTP/process integration remains pending; tests use a
+Kubernetes HTTP fixture, not a live cluster.

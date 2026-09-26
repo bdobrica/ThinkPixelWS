@@ -180,7 +180,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] K8S-003 Create PVC/hot storage according to configured profile. — operator-selected named filesystem profile with explicit class/capacity and RWO or RWOP access; process wiring remains pending.
 - [x] K8S-004 Implement deterministic component layout. — mounted-volume helper creates canonical component directories in stable name order, preserves contents on retry, and rejects scope/path conflicts; focused filesystem/domain race tests. Invoked by the mounted preparer in K8S-005.
 - [x] K8S-005 Implement Materialization prepare. — internal coordinator persists PREPARING/binding/READY with CAS, supports pending consumers and retries, and requires verified restore/layout under exclusive mounted-volume access. Kubernetes HTTP fixture + filesystem race tests cover failure and concurrent-retry paths. Process/API wiring, a deployed mount worker, generation restore backend, and transactional audit/outbox integration remain pending; no live-cluster readiness claim.
-- [ ] K8S-006 Implement Materialization status.
+- [x] K8S-006 Implement Materialization status. — tenant-scoped internal reader returns persisted lifecycle separately from observed storage, preserves provider errors, rejects concurrent metadata changes, and never mutates lifecycle or storage. Kubernetes HTTP fixture tests cover polling, absence, replacement, outage, cancellation, and fencing. HTTP/process integration remains pending.
 - [ ] K8S-007 Implement attach/binding result for AR.
 - [ ] K8S-008 Implement release without deleting canonical Workspace state.
 - [ ] K8S-009 Add CSI provider capability discovery.
