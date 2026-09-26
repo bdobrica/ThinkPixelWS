@@ -160,6 +160,24 @@ func (UnimplementedHandler) ReleaseMaterialization(ctx context.Context, params R
 	return r, ht.ErrNotImplemented
 }
 
+// ResolveWorkspaceBinding implements resolveWorkspaceBinding operation.
+//
+// Read-only resolution; does not allocate storage, acquire or renew a lease, attach compute, or change
+// Materialization state. POST keeps the AG grant reference out of URLs; no Idempotency-Key is needed
+// because this operation does not mutate state. Authenticate the service caller and resolve the
+// Materialization within its tenant before evaluating the current AG grant. Require audience
+// thinkpixelws, permitted materialization access, matching Workspace, generation, target and component
+// modes; deny revoked, expired or unverifiable grants. Only READY or ACTIVE Materializations may
+// resolve. Return 404 for missing or cross-tenant identity, 403 for denied authority, 409 for
+// unavailable state or mismatched binding scope, and 503 when grant verification or provider
+// observation is unavailable. Never return a binding for a component subset unless storage enforces
+// that exact subset and modes.
+//
+// POST /v1/materializations/{materialization_id}/binding
+func (UnimplementedHandler) ResolveWorkspaceBinding(ctx context.Context, req *ResolveWorkspaceBinding, params ResolveWorkspaceBindingParams) (r *WorkspaceBindingHeaders, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // RestoreWorkspace implements restoreWorkspace operation.
 //
 // POST /v1/workspaces/{workspace_id}/restore

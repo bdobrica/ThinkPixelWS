@@ -1477,6 +1477,68 @@ func (s *RefreshSourcesReq) SetConflictPolicy(val jx.Raw) {
 	s.ConflictPolicy = val
 }
 
+// Ref: #/components/schemas/ResolveWorkspaceBinding
+type ResolveWorkspaceBinding struct {
+	WorkspaceId UUID   `json:"workspaceId"`
+	Generation  int64  `json:"generation"`
+	TargetId    string `json:"targetId"`
+	// Exact requested scope; duplicate component IDs are invalid, even with different modes. Never
+	// silently broaden or narrow.
+	ComponentAccess []WorkspaceBindingComponentAccess `json:"componentAccess"`
+	// Opaque AG grant reference; never logged, echoed in the binding, or passed to the sandbox.
+	ExecutionGrant string `json:"executionGrant"`
+}
+
+// GetWorkspaceId returns the value of WorkspaceId.
+func (s *ResolveWorkspaceBinding) GetWorkspaceId() UUID {
+	return s.WorkspaceId
+}
+
+// GetGeneration returns the value of Generation.
+func (s *ResolveWorkspaceBinding) GetGeneration() int64 {
+	return s.Generation
+}
+
+// GetTargetId returns the value of TargetId.
+func (s *ResolveWorkspaceBinding) GetTargetId() string {
+	return s.TargetId
+}
+
+// GetComponentAccess returns the value of ComponentAccess.
+func (s *ResolveWorkspaceBinding) GetComponentAccess() []WorkspaceBindingComponentAccess {
+	return s.ComponentAccess
+}
+
+// GetExecutionGrant returns the value of ExecutionGrant.
+func (s *ResolveWorkspaceBinding) GetExecutionGrant() string {
+	return s.ExecutionGrant
+}
+
+// SetWorkspaceId sets the value of WorkspaceId.
+func (s *ResolveWorkspaceBinding) SetWorkspaceId(val UUID) {
+	s.WorkspaceId = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *ResolveWorkspaceBinding) SetGeneration(val int64) {
+	s.Generation = val
+}
+
+// SetTargetId sets the value of TargetId.
+func (s *ResolveWorkspaceBinding) SetTargetId(val string) {
+	s.TargetId = val
+}
+
+// SetComponentAccess sets the value of ComponentAccess.
+func (s *ResolveWorkspaceBinding) SetComponentAccess(val []WorkspaceBindingComponentAccess) {
+	s.ComponentAccess = val
+}
+
+// SetExecutionGrant sets the value of ExecutionGrant.
+func (s *ResolveWorkspaceBinding) SetExecutionGrant(val string) {
+	s.ExecutionGrant = val
+}
+
 type RestoreWorkspaceReq struct {
 	Target TargetContext `json:"target"`
 }
@@ -1693,6 +1755,209 @@ func (s *Workspace) SetResidency(val []string) {
 // SetCreatedAt sets the value of CreatedAt.
 func (s *Workspace) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// Context, never an AccessGrant. Handle is opaque, target-bound and audience-bound, not a credential
+// or portable storage identifier. AR must revalidate authority and current writer lease/fence at
+// attachment/use, enforce read-only mounts and exclusive writer attachment, and reject expired
+// bindings. Session close or sandbox deletion must not release WS storage or delete the Workspace.
+// Expiry is no later than the grant and, for writable access, the current writer lease. A binding is
+// not evidence that either remains valid after resolution.
+// Ref: #/components/schemas/WorkspaceBinding
+type WorkspaceBinding struct {
+	WorkspaceId UUID  `json:"workspaceId"`
+	Generation  int64 `json:"generation"`
+	// Exact enforced component scope with distinct component IDs.
+	ComponentAccess   []WorkspaceBindingComponentAccess `json:"componentAccess"`
+	MaterializationId UUID                              `json:"materializationId"`
+	Handle            string                            `json:"handle"`
+	MountRoot         string                            `json:"mountRoot"`
+	ExpiresAt         time.Time                         `json:"expiresAt"`
+	TargetId          string                            `json:"targetId"`
+	Audience          string                            `json:"audience"`
+}
+
+// GetWorkspaceId returns the value of WorkspaceId.
+func (s *WorkspaceBinding) GetWorkspaceId() UUID {
+	return s.WorkspaceId
+}
+
+// GetGeneration returns the value of Generation.
+func (s *WorkspaceBinding) GetGeneration() int64 {
+	return s.Generation
+}
+
+// GetComponentAccess returns the value of ComponentAccess.
+func (s *WorkspaceBinding) GetComponentAccess() []WorkspaceBindingComponentAccess {
+	return s.ComponentAccess
+}
+
+// GetMaterializationId returns the value of MaterializationId.
+func (s *WorkspaceBinding) GetMaterializationId() UUID {
+	return s.MaterializationId
+}
+
+// GetHandle returns the value of Handle.
+func (s *WorkspaceBinding) GetHandle() string {
+	return s.Handle
+}
+
+// GetMountRoot returns the value of MountRoot.
+func (s *WorkspaceBinding) GetMountRoot() string {
+	return s.MountRoot
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *WorkspaceBinding) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetTargetId returns the value of TargetId.
+func (s *WorkspaceBinding) GetTargetId() string {
+	return s.TargetId
+}
+
+// GetAudience returns the value of Audience.
+func (s *WorkspaceBinding) GetAudience() string {
+	return s.Audience
+}
+
+// SetWorkspaceId sets the value of WorkspaceId.
+func (s *WorkspaceBinding) SetWorkspaceId(val UUID) {
+	s.WorkspaceId = val
+}
+
+// SetGeneration sets the value of Generation.
+func (s *WorkspaceBinding) SetGeneration(val int64) {
+	s.Generation = val
+}
+
+// SetComponentAccess sets the value of ComponentAccess.
+func (s *WorkspaceBinding) SetComponentAccess(val []WorkspaceBindingComponentAccess) {
+	s.ComponentAccess = val
+}
+
+// SetMaterializationId sets the value of MaterializationId.
+func (s *WorkspaceBinding) SetMaterializationId(val UUID) {
+	s.MaterializationId = val
+}
+
+// SetHandle sets the value of Handle.
+func (s *WorkspaceBinding) SetHandle(val string) {
+	s.Handle = val
+}
+
+// SetMountRoot sets the value of MountRoot.
+func (s *WorkspaceBinding) SetMountRoot(val string) {
+	s.MountRoot = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *WorkspaceBinding) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetTargetId sets the value of TargetId.
+func (s *WorkspaceBinding) SetTargetId(val string) {
+	s.TargetId = val
+}
+
+// SetAudience sets the value of Audience.
+func (s *WorkspaceBinding) SetAudience(val string) {
+	s.Audience = val
+}
+
+// Ref: #/components/schemas/WorkspaceBindingComponentAccess
+type WorkspaceBindingComponentAccess struct {
+	ComponentId UUID                                `json:"componentId"`
+	Mode        WorkspaceBindingComponentAccessMode `json:"mode"`
+}
+
+// GetComponentId returns the value of ComponentId.
+func (s *WorkspaceBindingComponentAccess) GetComponentId() UUID {
+	return s.ComponentId
+}
+
+// GetMode returns the value of Mode.
+func (s *WorkspaceBindingComponentAccess) GetMode() WorkspaceBindingComponentAccessMode {
+	return s.Mode
+}
+
+// SetComponentId sets the value of ComponentId.
+func (s *WorkspaceBindingComponentAccess) SetComponentId(val UUID) {
+	s.ComponentId = val
+}
+
+// SetMode sets the value of Mode.
+func (s *WorkspaceBindingComponentAccess) SetMode(val WorkspaceBindingComponentAccessMode) {
+	s.Mode = val
+}
+
+type WorkspaceBindingComponentAccessMode string
+
+const (
+	WorkspaceBindingComponentAccessModeReadOnly  WorkspaceBindingComponentAccessMode = "read-only"
+	WorkspaceBindingComponentAccessModeReadWrite WorkspaceBindingComponentAccessMode = "read-write"
+)
+
+// AllValues returns all WorkspaceBindingComponentAccessMode values.
+func (WorkspaceBindingComponentAccessMode) AllValues() []WorkspaceBindingComponentAccessMode {
+	return []WorkspaceBindingComponentAccessMode{
+		WorkspaceBindingComponentAccessModeReadOnly,
+		WorkspaceBindingComponentAccessModeReadWrite,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkspaceBindingComponentAccessMode) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkspaceBindingComponentAccessModeReadOnly:
+		return []byte(s), nil
+	case WorkspaceBindingComponentAccessModeReadWrite:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkspaceBindingComponentAccessMode) UnmarshalText(data []byte) error {
+	switch WorkspaceBindingComponentAccessMode(data) {
+	case WorkspaceBindingComponentAccessModeReadOnly:
+		*s = WorkspaceBindingComponentAccessModeReadOnly
+		return nil
+	case WorkspaceBindingComponentAccessModeReadWrite:
+		*s = WorkspaceBindingComponentAccessModeReadWrite
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// WorkspaceBindingHeaders wraps WorkspaceBinding with response headers.
+type WorkspaceBindingHeaders struct {
+	CacheControl OptString
+	Response     WorkspaceBinding
+}
+
+// GetCacheControl returns the value of CacheControl.
+func (s *WorkspaceBindingHeaders) GetCacheControl() OptString {
+	return s.CacheControl
+}
+
+// GetResponse returns the value of Response.
+func (s *WorkspaceBindingHeaders) GetResponse() WorkspaceBinding {
+	return s.Response
+}
+
+// SetCacheControl sets the value of CacheControl.
+func (s *WorkspaceBindingHeaders) SetCacheControl(val OptString) {
+	s.CacheControl = val
+}
+
+// SetResponse sets the value of Response.
+func (s *WorkspaceBindingHeaders) SetResponse(val WorkspaceBinding) {
+	s.Response = val
 }
 
 // WorkspaceHeaders wraps Workspace with response headers.

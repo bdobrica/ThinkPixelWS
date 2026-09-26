@@ -115,6 +115,33 @@ paths:
       responses:
         '202': { description: Release accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Operation' } } } }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/materializations/{materialization_id}/binding:
+    parameters: [{ $ref: '#/components/parameters/MaterializationId' }]
+    post:
+      tags: [Materializations]
+      operationId: resolveWorkspaceBinding
+      summary: Resolve an AR binding for an existing ready Materialization
+      description: >-
+        Read-only resolution; does not allocate storage, acquire or renew a lease,
+        attach compute, or change Materialization state. POST keeps the AG grant
+        reference out of URLs; no Idempotency-Key is needed because this operation
+        does not mutate state. Authenticate the service caller and resolve the
+        Materialization within its tenant before evaluating the current AG grant.
+        Require audience thinkpixelws, permitted materialization access, matching
+        Workspace, generation, target and component modes; deny revoked, expired
+        or unverifiable grants. Only READY or ACTIVE Materializations may resolve.
+        Return 404 for missing or cross-tenant identity, 403 for denied authority,
+        409 for unavailable state or mismatched binding scope, and 503 when grant
+        verification or provider observation is unavailable. Never return a binding
+        for a component subset unless storage enforces that exact subset and modes.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ResolveWorkspaceBinding' } } } }
+      responses:
+        '200':
+          description: Non-authorizing AR binding; all requested scope must match
+          headers:
+            Cache-Control: { schema: { type: string, const: no-store }, description: Binding responses must not be cached }
+          content: { application/json: { schema: { $ref: '#/components/schemas/WorkspaceBinding' } } }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/materializations/{materialization_id}/checkpoint:
     parameters: [{ $ref: '#/components/parameters/MaterializationId' }]
     post:
@@ -312,6 +339,56 @@ components:
       additionalProperties: false
       required: [id, workspaceId, generation, mode, state, target]
       properties: { id: { $ref: '#/components/schemas/UUID' }, workspaceId: { $ref: '#/components/schemas/UUID' }, generation: { type: integer, minimum: 1 }, mode: { enum: [read-only, read-write] }, state: { enum: [REQUESTED, PREPARING, READY, ACTIVE, CHECKPOINTING, RELEASING, RELEASED, FAILED, FENCED] }, target: { $ref: '#/components/schemas/TargetContext' }, fencingToken: { type: integer, minimum: 1 }, expiresAt: { type: string, format: date-time }, handle: { type: string, maxLength: 4096, description: Opaque non-authorizing provider handle } }
+    WorkspaceBindingComponentAccess:
+      type: object
+      additionalProperties: false
+      required: [componentId, mode]
+      properties:
+        componentId: { $ref: '#/components/schemas/UUID' }
+        mode: { type: string, enum: [read-only, read-write] }
+    ResolveWorkspaceBinding:
+      type: object
+      additionalProperties: false
+      required: [workspaceId, generation, targetId, componentAccess, executionGrant]
+      properties:
+        workspaceId: { $ref: '#/components/schemas/UUID' }
+        generation: { type: integer, format: int64, minimum: 1 }
+        targetId: { type: string, minLength: 1, maxLength: 256 }
+        componentAccess:
+          type: array
+          minItems: 1
+          maxItems: 256
+          description: Exact requested scope; duplicate component IDs are invalid, even with different modes. Never silently broaden or narrow.
+          items: { $ref: '#/components/schemas/WorkspaceBindingComponentAccess' }
+        executionGrant: { type: string, minLength: 1, maxLength: 4096, description: "Opaque AG grant reference; never logged, echoed in the binding, or passed to the sandbox" }
+    WorkspaceBinding:
+      type: object
+      additionalProperties: false
+      description: >-
+        Context, never an AccessGrant. Handle is opaque, target-bound and
+        audience-bound, not a credential or portable storage identifier. AR must
+        revalidate authority and current writer lease/fence at attachment/use,
+        enforce read-only mounts and exclusive writer attachment, and reject
+        expired bindings. Session close or sandbox deletion must not release WS
+        storage or delete the Workspace. Expiry is no later than the grant and,
+        for writable access, the current writer lease. A binding is not evidence
+        that either remains valid after resolution.
+      required: [workspaceId, generation, componentAccess, materializationId, handle, mountRoot, expiresAt, targetId, audience]
+      properties:
+        workspaceId: { $ref: '#/components/schemas/UUID' }
+        generation: { type: integer, format: int64, minimum: 1 }
+        componentAccess:
+          type: array
+          minItems: 1
+          maxItems: 256
+          description: Exact enforced component scope with distinct component IDs.
+          items: { $ref: '#/components/schemas/WorkspaceBindingComponentAccess' }
+        materializationId: { $ref: '#/components/schemas/UUID' }
+        handle: { type: string, minLength: 1, maxLength: 4096 }
+        mountRoot: { type: string, const: /workspace }
+        expiresAt: { type: string, format: date-time }
+        targetId: { type: string, minLength: 1, maxLength: 256 }
+        audience: { type: string, const: thinkpixelar }
     FencedRequest:
       type: object
       additionalProperties: false

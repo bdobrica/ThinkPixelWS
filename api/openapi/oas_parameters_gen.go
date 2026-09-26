@@ -2774,6 +2774,78 @@ func decodeReleaseMaterializationParams(args [1]string, argsEscaped bool, r *htt
 	return params, nil
 }
 
+// ResolveWorkspaceBindingParams is parameters of resolveWorkspaceBinding operation.
+type ResolveWorkspaceBindingParams struct {
+	MaterializationID UUID
+}
+
+func unpackResolveWorkspaceBindingParams(packed middleware.Parameters) (params ResolveWorkspaceBindingParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "materialization_id",
+			In:   "path",
+		}
+		params.MaterializationID = packed[key].(UUID)
+	}
+	return params
+}
+
+func decodeResolveWorkspaceBindingParams(args [1]string, argsEscaped bool, r *http.Request) (params ResolveWorkspaceBindingParams, _ error) {
+	// Decode path: materialization_id.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "materialization_id",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotMaterializationIDVal uuid.UUID
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToUUID(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotMaterializationIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.MaterializationID = UUID(paramsDotMaterializationIDVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "materialization_id",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // RestoreWorkspaceParams is parameters of restoreWorkspace operation.
 type RestoreWorkspaceParams struct {
 	IdempotencyKey string

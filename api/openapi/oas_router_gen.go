@@ -14,6 +14,9 @@ var (
 	rn8AllowedHeaders = map[string]string{
 		"DELETE": "Idempotency-Key",
 	}
+	rn26AllowedHeaders = map[string]string{
+		"POST": "Content-Type",
+	}
 	rn9AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
@@ -32,7 +35,7 @@ var (
 	rn3AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn27AllowedHeaders = map[string]string{
+	rn29AllowedHeaders = map[string]string{
 		"GET": "Last-Event-Id",
 	}
 	rn15AllowedHeaders = map[string]string{
@@ -47,7 +50,7 @@ var (
 	rn24AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
-	rn26AllowedHeaders = map[string]string{
+	rn28AllowedHeaders = map[string]string{
 		"POST": "Content-Type,Idempotency-Key",
 	}
 	rn13AllowedHeaders = map[string]string{
@@ -181,9 +184,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/c"
+				case '/': // Prefix: "/"
 
-					if l := len("/c"); len(elem) >= l && elem[0:l] == "/c" {
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 						elem = elem[l:]
 					} else {
 						break
@@ -193,9 +196,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 					switch elem[0] {
-					case 'h': // Prefix: "heckpoint"
+					case 'b': // Prefix: "binding"
 
-						if l := len("heckpoint"); len(elem) >= l && elem[0:l] == "heckpoint" {
+						if l := len("binding"); len(elem) >= l && elem[0:l] == "binding" {
 							elem = elem[l:]
 						} else {
 							break
@@ -205,13 +208,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							// Leaf node.
 							switch r.Method {
 							case "POST":
-								s.handleCheckpointMaterializationRequest([1]string{
+								s.handleResolveWorkspaceBindingRequest([1]string{
 									args[0],
 								}, elemIsEscaped, w, r)
 							default:
 								s.notAllowed(w, r, notAllowedParams{
 									allowedMethods: "POST",
-									allowedHeaders: rn9AllowedHeaders,
+									allowedHeaders: rn26AllowedHeaders,
 									acceptPost:     "application/json",
 									acceptPatch:    "",
 								})
@@ -220,31 +223,72 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							return
 						}
 
-					case 'o': // Prefix: "ommit"
+					case 'c': // Prefix: "c"
 
-						if l := len("ommit"); len(elem) >= l && elem[0:l] == "ommit" {
+						if l := len("c"); len(elem) >= l && elem[0:l] == "c" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleCommitMaterializationRequest([1]string{
-									args[0],
-								}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, notAllowedParams{
-									allowedMethods: "POST",
-									allowedHeaders: rn11AllowedHeaders,
-									acceptPost:     "application/json",
-									acceptPatch:    "",
-								})
+							break
+						}
+						switch elem[0] {
+						case 'h': // Prefix: "heckpoint"
+
+							if l := len("heckpoint"); len(elem) >= l && elem[0:l] == "heckpoint" {
+								elem = elem[l:]
+							} else {
+								break
 							}
 
-							return
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleCheckpointMaterializationRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn9AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
+						case 'o': // Prefix: "ommit"
+
+							if l := len("ommit"); len(elem) >= l && elem[0:l] == "ommit" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleCommitMaterializationRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, notAllowedParams{
+										allowedMethods: "POST",
+										allowedHeaders: rn11AllowedHeaders,
+										acceptPost:     "application/json",
+										acceptPatch:    "",
+									})
+								}
+
+								return
+							}
+
 						}
 
 					}
@@ -442,7 +486,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "GET",
-										allowedHeaders: rn27AllowedHeaders,
+										allowedHeaders: rn29AllowedHeaders,
 										acceptPost:     "",
 										acceptPatch:    "",
 									})
@@ -654,7 +698,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									default:
 										s.notAllowed(w, r, notAllowedParams{
 											allowedMethods: "POST",
-											allowedHeaders: rn26AllowedHeaders,
+											allowedHeaders: rn28AllowedHeaders,
 											acceptPost:     "application/json",
 											acceptPatch:    "",
 										})
@@ -878,9 +922,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					}
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/c"
+				case '/': // Prefix: "/"
 
-					if l := len("/c"); len(elem) >= l && elem[0:l] == "/c" {
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 						elem = elem[l:]
 					} else {
 						break
@@ -890,9 +934,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						break
 					}
 					switch elem[0] {
-					case 'h': // Prefix: "heckpoint"
+					case 'b': // Prefix: "binding"
 
-						if l := len("heckpoint"); len(elem) >= l && elem[0:l] == "heckpoint" {
+						if l := len("binding"); len(elem) >= l && elem[0:l] == "binding" {
 							elem = elem[l:]
 						} else {
 							break
@@ -902,11 +946,11 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							// Leaf node.
 							switch method {
 							case "POST":
-								r.name = CheckpointMaterializationOperation
-								r.summary = ""
-								r.operationID = "checkpointMaterialization"
+								r.name = ResolveWorkspaceBindingOperation
+								r.summary = "Resolve an AR binding for an existing ready Materialization"
+								r.operationID = "resolveWorkspaceBinding"
 								r.operationGroup = ""
-								r.pathPattern = "/v1/materializations/{materialization_id}/checkpoint"
+								r.pathPattern = "/v1/materializations/{materialization_id}/binding"
 								r.args = args
 								r.count = 1
 								return r, true
@@ -915,29 +959,68 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							}
 						}
 
-					case 'o': // Prefix: "ommit"
+					case 'c': // Prefix: "c"
 
-						if l := len("ommit"); len(elem) >= l && elem[0:l] == "ommit" {
+						if l := len("c"); len(elem) >= l && elem[0:l] == "c" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = CommitMaterializationOperation
-								r.summary = ""
-								r.operationID = "commitMaterialization"
-								r.operationGroup = ""
-								r.pathPattern = "/v1/materializations/{materialization_id}/commit"
-								r.args = args
-								r.count = 1
-								return r, true
-							default:
-								return
+							break
+						}
+						switch elem[0] {
+						case 'h': // Prefix: "heckpoint"
+
+							if l := len("heckpoint"); len(elem) >= l && elem[0:l] == "heckpoint" {
+								elem = elem[l:]
+							} else {
+								break
 							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = CheckpointMaterializationOperation
+									r.summary = ""
+									r.operationID = "checkpointMaterialization"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/materializations/{materialization_id}/checkpoint"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'o': // Prefix: "ommit"
+
+							if l := len("ommit"); len(elem) >= l && elem[0:l] == "ommit" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = CommitMaterializationOperation
+									r.summary = ""
+									r.operationID = "commitMaterialization"
+									r.operationGroup = ""
+									r.pathPattern = "/v1/materializations/{materialization_id}/commit"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
 						}
 
 					}

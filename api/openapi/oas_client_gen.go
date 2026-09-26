@@ -113,6 +113,21 @@ type Invoker interface {
 	//
 	// DELETE /v1/materializations/{materialization_id}
 	ReleaseMaterialization(ctx context.Context, params ReleaseMaterializationParams) (*Operation, error)
+	// ResolveWorkspaceBinding invokes resolveWorkspaceBinding operation.
+	//
+	// Read-only resolution; does not allocate storage, acquire or renew a lease, attach compute, or change
+	// Materialization state. POST keeps the AG grant reference out of URLs; no Idempotency-Key is needed
+	// because this operation does not mutate state. Authenticate the service caller and resolve the
+	// Materialization within its tenant before evaluating the current AG grant. Require audience
+	// thinkpixelws, permitted materialization access, matching Workspace, generation, target and component
+	// modes; deny revoked, expired or unverifiable grants. Only READY or ACTIVE Materializations may
+	// resolve. Return 404 for missing or cross-tenant identity, 403 for denied authority, 409 for
+	// unavailable state or mismatched binding scope, and 503 when grant verification or provider
+	// observation is unavailable. Never return a binding for a component subset unless storage enforces
+	// that exact subset and modes.
+	//
+	// POST /v1/materializations/{materialization_id}/binding
+	ResolveWorkspaceBinding(ctx context.Context, request *ResolveWorkspaceBinding, params ResolveWorkspaceBindingParams) (*WorkspaceBindingHeaders, error)
 	// RestoreWorkspace invokes restoreWorkspace operation.
 	//
 	// POST /v1/workspaces/{workspace_id}/restore
@@ -2554,6 +2569,120 @@ func (c *Client) sendReleaseMaterialization(ctx context.Context, params ReleaseM
 
 	stage = "DecodeResponse"
 	result, err := decodeReleaseMaterializationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ResolveWorkspaceBinding invokes resolveWorkspaceBinding operation.
+//
+// Read-only resolution; does not allocate storage, acquire or renew a lease, attach compute, or change
+// Materialization state. POST keeps the AG grant reference out of URLs; no Idempotency-Key is needed
+// because this operation does not mutate state. Authenticate the service caller and resolve the
+// Materialization within its tenant before evaluating the current AG grant. Require audience
+// thinkpixelws, permitted materialization access, matching Workspace, generation, target and component
+// modes; deny revoked, expired or unverifiable grants. Only READY or ACTIVE Materializations may
+// resolve. Return 404 for missing or cross-tenant identity, 403 for denied authority, 409 for
+// unavailable state or mismatched binding scope, and 503 when grant verification or provider
+// observation is unavailable. Never return a binding for a component subset unless storage enforces
+// that exact subset and modes.
+//
+// POST /v1/materializations/{materialization_id}/binding
+func (c *Client) ResolveWorkspaceBinding(ctx context.Context, request *ResolveWorkspaceBinding, params ResolveWorkspaceBindingParams) (*WorkspaceBindingHeaders, error) {
+	res, err := c.sendResolveWorkspaceBinding(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendResolveWorkspaceBinding(ctx context.Context, request *ResolveWorkspaceBinding, params ResolveWorkspaceBindingParams) (res *WorkspaceBindingHeaders, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("resolveWorkspaceBinding"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/materializations/{materialization_id}/binding"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ResolveWorkspaceBindingOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/materializations/"
+	{
+		// Encode "materialization_id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "materialization_id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := uuid.UUID(params.MaterializationID); true {
+				return e.EncodeValue(conv.UUIDToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/binding"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeResolveWorkspaceBindingRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeResolveWorkspaceBindingResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

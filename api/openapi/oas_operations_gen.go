@@ -27,6 +27,7 @@ const (
 	ListWorkspacesOperation            OperationName = "ListWorkspaces"
 	RefreshSourcesOperation            OperationName = "RefreshSources"
 	ReleaseMaterializationOperation    OperationName = "ReleaseMaterialization"
+	ResolveWorkspaceBindingOperation   OperationName = "ResolveWorkspaceBinding"
 	RestoreWorkspaceOperation          OperationName = "RestoreWorkspace"
 	StreamWorkspaceEventsOperation     OperationName = "StreamWorkspaceEvents"
 )
