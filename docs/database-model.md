@@ -30,6 +30,15 @@ PostgreSQL 17 is authoritative for control metadata; large content is stored by 
 
 ## Transactional invariants
 
+Migration `000023` implements the core `materializations` relation: tenant-scoped
+identity, completed base-generation reference, provider, requested target, mode,
+state/version, and creation/update timestamps. The repository creates only
+`REQUESTED` records and reads by tenant and Materialization ID; it accepts a
+shared SQL transaction for future atomic business/audit/outbox operations.
+A `read-write` request grants no writer lease or execution authority. Lifecycle
+transitions (`MAT-002`), provider binding metadata (`MAT-003`), leases/fencing,
+checkpoint/dirty status, and execution references remain subsequent work.
+
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.
 - Generation numbers and event sequence numbers are allocated while locking the Workspace row.
 - A trigger or revoked update/delete privileges reject mutation/deletion of completed generation, component-generation, and provenance rows.

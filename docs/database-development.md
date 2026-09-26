@@ -40,3 +40,17 @@ access to `PUBLIC`. A separately provisioned service identity receives only the
 schema and table privileges needed at runtime; it does not own the schema and
 cannot alter it. Role and credential provisioning stays outside migrations so
 the same schema works with self-managed and hosted PostgreSQL role models.
+
+Run the Materialization persistence integration test against a disposable
+PostgreSQL instance:
+
+```sh
+THINKPIXELWS_TEST_DATABASE_URL='postgres://USER:PASSWORD@127.0.0.1:5432/postgres?sslmode=disable' \
+  go test -race ./internal/adapters/postgres -run TestMaterializationRepositoryPostgres
+```
+
+The test identity needs `CREATE DATABASE` permission. The test creates and
+removes its own randomly named database, applies all migrations, and checks
+round-trip persistence, tenant isolation, constraints, transaction rollback,
+and rollback/reapplication of the Materialization migration. It skips when the
+environment variable is unset.

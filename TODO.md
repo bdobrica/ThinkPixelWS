@@ -166,7 +166,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 
 ## Phase 3 — Kubernetes working Materializations
 
-- [ ] MAT-001 Add Materialization schema/domain/repository.
+- [x] MAT-001 Add Materialization schema/domain/repository. — completed 2026-09-26, commit: this change, evidence: domain/repository race tests; `TestMaterializationRepositoryPostgres` (fresh-connection persistence, tenant/generation isolation, constraints, transaction rollback, migration down/up); existing HTTP PostgreSQL integration tests; focused vet and migration checksums. Persists REQUESTED metadata only; lifecycle, bindings, leases, and Kubernetes provisioning remain separate tasks.
 - [ ] MAT-002 Add Materialization lifecycle state machine.
 - [ ] MAT-003 Add Materialization provider-neutral binding metadata.
 - [ ] MAT-004 Add writable MaterializationLease schema/domain.
@@ -549,3 +549,5 @@ YYYY-MM-DD | `ARC-...` | `<sha>` | `<commands/artifacts>` | `<notes>`
 2026-09-26 | `API-002` | this change | PostgreSQL HTTP read/pagination tests; live service cursor continuation after restart; focused race/vet/build | Tenant-scoped metadata reads; 15-minute authenticated cursors; content APIs remain separate.
 
 2026-09-26 | `API-003` | this change | PostgreSQL HTTP metadata integration and boundary race tests; live service read/cursor continuation after restart; focused vet/build; OpenAPI checks | Read-only component/generation metadata; additive Next-Cursor headers preserve array bodies; explicit classification string schema fixes absent-field serialization. Mutations remain separate.
+
+2026-09-26 | `MAT-001` | this change | Domain/repository race tests; real PostgreSQL persistence/isolation/rollback and migration down/up; existing HTTP integration tests; focused vet; migration checksums | Core Materialization records only, with tenant-scoped completed-generation FK. No execution authority, writable lease, or cluster resources created.
