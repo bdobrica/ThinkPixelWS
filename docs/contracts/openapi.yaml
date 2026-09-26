@@ -55,7 +55,7 @@ paths:
       operationId: listComponents
       parameters: [{ $ref: '#/components/parameters/Cursor' }, { $ref: '#/components/parameters/Limit' }]
       responses:
-        '200': { description: Components, content: { application/json: { schema: { type: array, maxItems: 500, items: { $ref: '#/components/schemas/Component' } } } } }
+        '200': { description: Components, headers: { Next-Cursor: { description: Opaque continuation cursor; omitted on the last page, schema: { type: string } } }, content: { application/json: { schema: { type: array, maxItems: 500, items: { $ref: '#/components/schemas/Component' } } } } }
         default: { $ref: '#/components/responses/Problem' }
     post:
       tags: [Components]
@@ -80,7 +80,7 @@ paths:
       operationId: listGenerations
       parameters: [{ $ref: '#/components/parameters/Cursor' }, { $ref: '#/components/parameters/Limit' }]
       responses:
-        '200': { description: Generations, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Generation' } } } } }
+        '200': { description: Generations, headers: { Next-Cursor: { description: Opaque continuation cursor; omitted on the last page, schema: { type: string } } }, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Generation' } } } } }
         default: { $ref: '#/components/responses/Problem' }
   /v1/workspaces/{workspace_id}/generations/{generation}:
     parameters: [{ $ref: '#/components/parameters/WorkspaceId' }, { $ref: '#/components/parameters/GenerationNumber' }]
@@ -235,7 +235,7 @@ components:
   schemas:
     UUID: { type: string, format: uuid, description: UUIDv7 }
     Name: { type: string, minLength: 1, maxLength: 63, pattern: '^[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$' }
-    Classification: { enum: [public, internal, confidential, restricted] }
+    Classification: { type: string, enum: [public, internal, confidential, restricted] }
     WorkspaceState: { enum: [CREATING, READY, ARCHIVING, ARCHIVED, RESTORING, DELETING, DELETED, DEGRADED] }
     CreateWorkspace:
       type: object

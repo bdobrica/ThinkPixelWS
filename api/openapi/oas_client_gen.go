@@ -92,11 +92,11 @@ type Invoker interface {
 	// ListComponents invokes listComponents operation.
 	//
 	// GET /v1/workspaces/{workspace_id}/components
-	ListComponents(ctx context.Context, params ListComponentsParams) ([]Component, error)
+	ListComponents(ctx context.Context, params ListComponentsParams) (*ListComponentsOKHeaders, error)
 	// ListGenerations invokes listGenerations operation.
 	//
 	// GET /v1/workspaces/{workspace_id}/generations
-	ListGenerations(ctx context.Context, params ListGenerationsParams) ([]Generation, error)
+	ListGenerations(ctx context.Context, params ListGenerationsParams) (*ListGenerationsOKHeaders, error)
 	// ListPortableSnapshots invokes listPortableSnapshots operation.
 	//
 	// GET /v1/workspaces/{workspace_id}/snapshots
@@ -1842,12 +1842,12 @@ func (c *Client) sendImportSource(ctx context.Context, request *ImportRequest, p
 // ListComponents invokes listComponents operation.
 //
 // GET /v1/workspaces/{workspace_id}/components
-func (c *Client) ListComponents(ctx context.Context, params ListComponentsParams) ([]Component, error) {
+func (c *Client) ListComponents(ctx context.Context, params ListComponentsParams) (*ListComponentsOKHeaders, error) {
 	res, err := c.sendListComponents(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendListComponents(ctx context.Context, params ListComponentsParams) (res []Component, err error) {
+func (c *Client) sendListComponents(ctx context.Context, params ListComponentsParams) (res *ListComponentsOKHeaders, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("listComponents"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -1980,12 +1980,12 @@ func (c *Client) sendListComponents(ctx context.Context, params ListComponentsPa
 // ListGenerations invokes listGenerations operation.
 //
 // GET /v1/workspaces/{workspace_id}/generations
-func (c *Client) ListGenerations(ctx context.Context, params ListGenerationsParams) ([]Generation, error) {
+func (c *Client) ListGenerations(ctx context.Context, params ListGenerationsParams) (*ListGenerationsOKHeaders, error) {
 	res, err := c.sendListGenerations(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendListGenerations(ctx context.Context, params ListGenerationsParams) (res []Generation, err error) {
+func (c *Client) sendListGenerations(ctx context.Context, params ListGenerationsParams) (res *ListGenerationsOKHeaders, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("listGenerations"),
 		semconv.HTTPRequestMethodKey.String("GET"),

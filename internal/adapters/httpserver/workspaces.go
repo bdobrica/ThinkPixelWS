@@ -39,7 +39,10 @@ func NewWorkspaceAPI(creator workspace.Creator, reader workspace.Reader) (http.H
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		isCreate := r.Method == "POST" && r.URL.Path == "/v1/workspaces"
-		isRead := r.Method == "GET" && (r.URL.Path == "/v1/workspaces" || (strings.HasPrefix(r.URL.Path, "/v1/workspaces/") && !strings.Contains(strings.TrimPrefix(r.URL.Path, "/v1/workspaces/"), "/")))
+		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/v1/workspaces/"), "/")
+		isRead := r.Method == "GET" && (r.URL.Path == "/v1/workspaces" ||
+			(strings.HasPrefix(r.URL.Path, "/v1/workspaces/") && (len(parts) == 1 ||
+				((len(parts) == 2 || len(parts) == 3) && (parts[1] == "components" || parts[1] == "generations")))))
 		if !isCreate && !isRead {
 			WriteProblem(w, r, shared.NewError(shared.CodeNotFound, "endpoint is not implemented"))
 			return
@@ -65,10 +68,8 @@ func (h *workspaceHandler) CreateWorkspace(ctx context.Context, req *api.CreateW
 	if err := json.Unmarshal(req.Owner.Kind, &kind); err != nil {
 		return nil, shared.NewError(shared.CodeInvalidArgument, "invalid owner kind")
 	}
-	if len(req.Classification) > 0 {
-		if err := json.Unmarshal(req.Classification, &classification); err != nil || classification == "" {
-			return nil, shared.NewError(shared.CodeInvalidArgument, "invalid classification")
-		}
+	if req.Classification.Set {
+		classification = domain.Classification(req.Classification.Value)
 	}
 	traceID := ""
 	if span := trace.SpanContextFromContext(ctx); span.IsValid() {
@@ -87,12 +88,11 @@ func (h *workspaceHandler) CreateWorkspace(ctx context.Context, req *api.CreateW
 func workspaceResponse(result ports.WorkspaceRecord) api.Workspace {
 	ownerKind, _ := json.Marshal(result.Owner.Kind)
 	state, _ := json.Marshal(result.State)
-	class, _ := json.Marshal(result.Classification)
 	response := api.Workspace{
 		ID: api.UUID(result.ID), Name: api.Name(result.Name),
 		Owner: api.Owner{Kind: ownerKind, ID: result.Owner.ID},
 		State: state, StateVersion: int(result.StateVersion),
-		Classification: class, Residency: result.Residency, CreatedAt: result.CreatedAt,
+		Classification: api.NewOptClassification(api.Classification(result.Classification)), Residency: result.Residency, CreatedAt: result.CreatedAt,
 	}
 	if result.HeadGeneration > 0 {
 		response.HeadGeneration = api.NewOptInt(int(result.HeadGeneration))

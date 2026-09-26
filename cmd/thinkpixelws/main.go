@@ -61,7 +61,7 @@ func run() error {
 		if cursorErr != nil {
 			return cursorErr
 		}
-		api, err = httpserver.NewWorkspaceAPI(workspace.Creator{Store: postgres.WorkspaceCreator{DB: db}, Clock: clockadapter.System{}}, workspace.Reader{Store: postgres.WorkspaceReader{DB: db}, Cursors: cursors, Clock: clockadapter.System{}})
+		api, err = httpserver.NewWorkspaceAPI(workspace.Creator{Store: postgres.WorkspaceCreator{DB: db}, Clock: clockadapter.System{}}, workspace.Reader{Store: postgres.WorkspaceReader{DB: db}, Metadata: postgres.WorkspaceReader{DB: db}, Cursors: cursors, Clock: clockadapter.System{}})
 		if err != nil {
 			return fmt.Errorf("initialize Workspace API: %w", err)
 		}

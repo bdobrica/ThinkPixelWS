@@ -17,7 +17,61 @@ func (s *ProblemStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
-type Classification jx.Raw
+// Ref: #/components/schemas/Classification
+type Classification string
+
+const (
+	ClassificationPublic       Classification = "public"
+	ClassificationInternal     Classification = "internal"
+	ClassificationConfidential Classification = "confidential"
+	ClassificationRestricted   Classification = "restricted"
+)
+
+// AllValues returns all Classification values.
+func (Classification) AllValues() []Classification {
+	return []Classification{
+		ClassificationPublic,
+		ClassificationInternal,
+		ClassificationConfidential,
+		ClassificationRestricted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Classification) MarshalText() ([]byte, error) {
+	switch s {
+	case ClassificationPublic:
+		return []byte(s), nil
+	case ClassificationInternal:
+		return []byte(s), nil
+	case ClassificationConfidential:
+		return []byte(s), nil
+	case ClassificationRestricted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Classification) UnmarshalText(data []byte) error {
+	switch Classification(data) {
+	case ClassificationPublic:
+		*s = ClassificationPublic
+		return nil
+	case ClassificationInternal:
+		*s = ClassificationInternal
+		return nil
+	case ClassificationConfidential:
+		*s = ClassificationConfidential
+		return nil
+	case ClassificationRestricted:
+		*s = ClassificationRestricted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // Merged schema.
 // Ref: #/components/schemas/CommitRequest
@@ -71,13 +125,13 @@ func (s *CommitRequest) SetDurability(val jx.Raw) {
 // Merged schema.
 // Ref: #/components/schemas/Component
 type Component struct {
-	Name           Name             `json:"name"`
-	Kind           jx.Raw           `json:"kind"`
-	Path           string           `json:"path"`
-	Source         OptSourceBinding `json:"source"`
-	ID             UUID             `json:"id"`
-	Classification Classification   `json:"classification"`
-	Taints         []string         `json:"taints"`
+	Name           Name              `json:"name"`
+	Kind           jx.Raw            `json:"kind"`
+	Path           string            `json:"path"`
+	Source         OptSourceBinding  `json:"source"`
+	ID             UUID              `json:"id"`
+	Classification OptClassification `json:"classification"`
+	Taints         []string          `json:"taints"`
 }
 
 // GetName returns the value of Name.
@@ -106,7 +160,7 @@ func (s *Component) GetID() UUID {
 }
 
 // GetClassification returns the value of Classification.
-func (s *Component) GetClassification() Classification {
+func (s *Component) GetClassification() OptClassification {
 	return s.Classification
 }
 
@@ -141,7 +195,7 @@ func (s *Component) SetID(val UUID) {
 }
 
 // SetClassification sets the value of Classification.
-func (s *Component) SetClassification(val Classification) {
+func (s *Component) SetClassification(val OptClassification) {
 	s.Classification = val
 }
 
@@ -340,10 +394,10 @@ func (s *CreatePortableSnapshotReq) SetGeneration(val int) {
 
 // Ref: #/components/schemas/CreateWorkspace
 type CreateWorkspace struct {
-	Name           Name           `json:"name"`
-	Owner          Owner          `json:"owner"`
-	Classification Classification `json:"classification"`
-	Residency      []string       `json:"residency"`
+	Name           Name              `json:"name"`
+	Owner          Owner             `json:"owner"`
+	Classification OptClassification `json:"classification"`
+	Residency      []string          `json:"residency"`
 }
 
 // GetName returns the value of Name.
@@ -357,7 +411,7 @@ func (s *CreateWorkspace) GetOwner() Owner {
 }
 
 // GetClassification returns the value of Classification.
-func (s *CreateWorkspace) GetClassification() Classification {
+func (s *CreateWorkspace) GetClassification() OptClassification {
 	return s.Classification
 }
 
@@ -377,7 +431,7 @@ func (s *CreateWorkspace) SetOwner(val Owner) {
 }
 
 // SetClassification sets the value of Classification.
-func (s *CreateWorkspace) SetClassification(val Classification) {
+func (s *CreateWorkspace) SetClassification(val OptClassification) {
 	s.Classification = val
 }
 
@@ -564,6 +618,58 @@ func (s *ImportRequest) SetSource(val SourceBinding) {
 // SetExpectedHeadGeneration sets the value of ExpectedHeadGeneration.
 func (s *ImportRequest) SetExpectedHeadGeneration(val int) {
 	s.ExpectedHeadGeneration = val
+}
+
+// ListComponentsOKHeaders wraps []Component with response headers.
+type ListComponentsOKHeaders struct {
+	NextCursor OptString
+	Response   []Component
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ListComponentsOKHeaders) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// GetResponse returns the value of Response.
+func (s *ListComponentsOKHeaders) GetResponse() []Component {
+	return s.Response
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ListComponentsOKHeaders) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// SetResponse sets the value of Response.
+func (s *ListComponentsOKHeaders) SetResponse(val []Component) {
+	s.Response = val
+}
+
+// ListGenerationsOKHeaders wraps []Generation with response headers.
+type ListGenerationsOKHeaders struct {
+	NextCursor OptString
+	Response   []Generation
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ListGenerationsOKHeaders) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// GetResponse returns the value of Response.
+func (s *ListGenerationsOKHeaders) GetResponse() []Generation {
+	return s.Response
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ListGenerationsOKHeaders) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+// SetResponse sets the value of Response.
+func (s *ListGenerationsOKHeaders) SetResponse(val []Generation) {
+	s.Response = val
 }
 
 // Ref: #/components/schemas/Materialization
@@ -760,6 +866,52 @@ func (o OptBool) Get() (v bool, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptBool) Or(d bool) bool {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptClassification returns new OptClassification with value set to v.
+func NewOptClassification(v Classification) OptClassification {
+	return OptClassification{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptClassification is optional Classification.
+type OptClassification struct {
+	Value Classification
+	Set   bool
+}
+
+// IsSet returns true if OptClassification was set.
+func (o OptClassification) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptClassification) Reset() {
+	var v Classification
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptClassification) SetTo(v Classification) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptClassification) Get() (v Classification, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptClassification) Or(d Classification) Classification {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1442,15 +1594,15 @@ type UUID uuid.UUID
 
 // Ref: #/components/schemas/Workspace
 type Workspace struct {
-	ID             UUID           `json:"id"`
-	Name           Name           `json:"name"`
-	Owner          Owner          `json:"owner"`
-	State          WorkspaceState `json:"state"`
-	StateVersion   int            `json:"stateVersion"`
-	HeadGeneration OptInt         `json:"headGeneration"`
-	Classification Classification `json:"classification"`
-	Residency      []string       `json:"residency"`
-	CreatedAt      time.Time      `json:"createdAt"`
+	ID             UUID              `json:"id"`
+	Name           Name              `json:"name"`
+	Owner          Owner             `json:"owner"`
+	State          WorkspaceState    `json:"state"`
+	StateVersion   int               `json:"stateVersion"`
+	HeadGeneration OptInt            `json:"headGeneration"`
+	Classification OptClassification `json:"classification"`
+	Residency      []string          `json:"residency"`
+	CreatedAt      time.Time         `json:"createdAt"`
 }
 
 // GetID returns the value of ID.
@@ -1484,7 +1636,7 @@ func (s *Workspace) GetHeadGeneration() OptInt {
 }
 
 // GetClassification returns the value of Classification.
-func (s *Workspace) GetClassification() Classification {
+func (s *Workspace) GetClassification() OptClassification {
 	return s.Classification
 }
 
@@ -1529,7 +1681,7 @@ func (s *Workspace) SetHeadGeneration(val OptInt) {
 }
 
 // SetClassification sets the value of Classification.
-func (s *Workspace) SetClassification(val Classification) {
+func (s *Workspace) SetClassification(val OptClassification) {
 	s.Classification = val
 }
 

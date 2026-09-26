@@ -16,11 +16,7 @@ import (
 
 // Encode encodes Classification as json.
 func (s Classification) Encode(e *jx.Encoder) {
-	unwrapped := jx.Raw(s)
-
-	if len(unwrapped) != 0 {
-		e.Raw(unwrapped)
-	}
+	e.Str(string(s))
 }
 
 // Decode decodes Classification from json.
@@ -28,18 +24,24 @@ func (s *Classification) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode Classification to nil")
 	}
-	var unwrapped jx.Raw
-	if err := func() error {
-		v, err := d.RawAppend(nil)
-		unwrapped = jx.Raw(v)
-		if err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		return errors.Wrap(err, "alias")
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
 	}
-	*s = Classification(unwrapped)
+	// Try to use constant string.
+	switch Classification(v) {
+	case ClassificationPublic:
+		*s = ClassificationPublic
+	case ClassificationInternal:
+		*s = ClassificationInternal
+	case ClassificationConfidential:
+		*s = ClassificationConfidential
+	case ClassificationRestricted:
+		*s = ClassificationRestricted
+	default:
+		*s = Classification(v)
+	}
+
 	return nil
 }
 
@@ -236,8 +238,10 @@ func (s *Component) encodeFields(e *jx.Encoder) {
 		s.ID.Encode(e)
 	}
 	{
-		e.FieldStart("classification")
-		s.Classification.Encode(e)
+		if s.Classification.Set {
+			e.FieldStart("classification")
+			s.Classification.Encode(e)
+		}
 	}
 	{
 		if s.Taints != nil {
@@ -326,6 +330,7 @@ func (s *Component) Decode(d *jx.Decoder) error {
 			}
 		case "classification":
 			if err := func() error {
+				s.Classification.Reset()
 				if err := s.Classification.Decode(d); err != nil {
 					return err
 				}
@@ -992,8 +997,10 @@ func (s *CreateWorkspace) encodeFields(e *jx.Encoder) {
 		s.Owner.Encode(e)
 	}
 	{
-		e.FieldStart("classification")
-		s.Classification.Encode(e)
+		if s.Classification.Set {
+			e.FieldStart("classification")
+			s.Classification.Encode(e)
+		}
 	}
 	{
 		if s.Residency != nil {
@@ -1045,6 +1052,7 @@ func (s *CreateWorkspace) Decode(d *jx.Decoder) error {
 			}
 		case "classification":
 			if err := func() error {
+				s.Classification.Reset()
 				if err := s.Classification.Decode(d); err != nil {
 					return err
 				}
@@ -2139,6 +2147,39 @@ func (s OptBool) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptBool) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes Classification as json.
+func (o OptClassification) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes Classification from json.
+func (o *OptClassification) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptClassification to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptClassification) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptClassification) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -3524,8 +3565,10 @@ func (s *Workspace) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		e.FieldStart("classification")
-		s.Classification.Encode(e)
+		if s.Classification.Set {
+			e.FieldStart("classification")
+			s.Classification.Encode(e)
+		}
 	}
 	{
 		if s.Residency != nil {
@@ -3628,6 +3671,7 @@ func (s *Workspace) Decode(d *jx.Decoder) error {
 			}
 		case "classification":
 			if err := func() error {
+				s.Classification.Reset()
 				if err := s.Classification.Decode(d); err != nil {
 					return err
 				}

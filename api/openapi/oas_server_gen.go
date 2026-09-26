@@ -71,11 +71,11 @@ type Handler interface {
 	// ListComponents implements listComponents operation.
 	//
 	// GET /v1/workspaces/{workspace_id}/components
-	ListComponents(ctx context.Context, params ListComponentsParams) ([]Component, error)
+	ListComponents(ctx context.Context, params ListComponentsParams) (*ListComponentsOKHeaders, error)
 	// ListGenerations implements listGenerations operation.
 	//
 	// GET /v1/workspaces/{workspace_id}/generations
-	ListGenerations(ctx context.Context, params ListGenerationsParams) ([]Generation, error)
+	ListGenerations(ctx context.Context, params ListGenerationsParams) (*ListGenerationsOKHeaders, error)
 	// ListPortableSnapshots implements listPortableSnapshots operation.
 	//
 	// GET /v1/workspaces/{workspace_id}/snapshots

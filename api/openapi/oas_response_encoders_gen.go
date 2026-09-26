@@ -230,13 +230,33 @@ func encodeImportSourceResponse(response *Operation, w http.ResponseWriter, span
 	return nil
 }
 
-func encodeListComponentsResponse(response []Component, w http.ResponseWriter, span trace.Span) error {
+func encodeListComponentsResponse(response *ListComponentsOKHeaders, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Access-Control-Expose-Headers", "Next-Cursor")
+	// Encoding response headers.
+	{
+		h := uri.NewHeaderEncoder(w.Header())
+		// Encode "Next-Cursor" header.
+		{
+			cfg := uri.HeaderParameterEncodingConfig{
+				Name:    "Next-Cursor",
+				Explode: false,
+			}
+			if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+				if val, ok := response.NextCursor.Get(); ok {
+					return e.EncodeValue(conv.StringToString(val))
+				}
+				return nil
+			}); err != nil {
+				return errors.Wrap(err, "encode Next-Cursor header")
+			}
+		}
+	}
 	w.WriteHeader(200)
 
 	e := new(jx.Encoder)
 	e.ArrStart()
-	for _, elem := range response {
+	for _, elem := range response.Response {
 		elem.Encode(e)
 	}
 	e.ArrEnd()
@@ -247,13 +267,33 @@ func encodeListComponentsResponse(response []Component, w http.ResponseWriter, s
 	return nil
 }
 
-func encodeListGenerationsResponse(response []Generation, w http.ResponseWriter, span trace.Span) error {
+func encodeListGenerationsResponse(response *ListGenerationsOKHeaders, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Access-Control-Expose-Headers", "Next-Cursor")
+	// Encoding response headers.
+	{
+		h := uri.NewHeaderEncoder(w.Header())
+		// Encode "Next-Cursor" header.
+		{
+			cfg := uri.HeaderParameterEncodingConfig{
+				Name:    "Next-Cursor",
+				Explode: false,
+			}
+			if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+				if val, ok := response.NextCursor.Get(); ok {
+					return e.EncodeValue(conv.StringToString(val))
+				}
+				return nil
+			}); err != nil {
+				return errors.Wrap(err, "encode Next-Cursor header")
+			}
+		}
+	}
 	w.WriteHeader(200)
 
 	e := new(jx.Encoder)
 	e.ArrStart()
-	for _, elem := range response {
+	for _, elem := range response.Response {
 		elem.Encode(e)
 	}
 	e.ArrEnd()

@@ -102,7 +102,7 @@ identity. Handlers receive `httpserver.IdentityFromContext` and must call
 `httpserver.AuthorizeWorkspace` with the operation and tenant-resolved target.
 All other actions remain denied, including materialization and profile access.
 A development-mode warning is logged at startup. Health/readiness and metrics
-remain unauthenticated. Workspace create/list/get additionally require PostgreSQL
+remain unauthenticated. Workspace APIs additionally require PostgreSQL
 configuration below.
 
 `disabled` disables development auth; it does not enable anonymous API access.
@@ -113,7 +113,7 @@ no production OIDC HTTP mode yet. Unknown modes and identity/token settings with
 
 ## Workspace API and PostgreSQL
 
-Workspace create/list/get APIs are available when `THINKPIXELWS_DATABASE_URL_FILE` points
+Workspace create/list/get and component/generation read APIs are available when `THINKPIXELWS_DATABASE_URL_FILE` points
 to a file containing the PostgreSQL connection URL. Keep this file outside the
 repository and Workspace content, readable only by the service operator. The
 service reads it at startup, verifies connectivity, and uses PostgreSQL for
@@ -193,6 +193,34 @@ Every request checks list permission and view permission for each candidate.
 Denied items are omitted, so a page can be short or empty while still having a
 `nextCursor`. Development policy allows all metadata within the configured tenant.
 
+Read component and generation metadata through:
+
+- `GET /v1/workspaces/{workspace_id}/components`
+- `GET /v1/workspaces/{workspace_id}/components/{component_id}`
+- `GET /v1/workspaces/{workspace_id}/generations`
+- `GET /v1/workspaces/{workspace_id}/generations/{generation}`
+
+Each request resolves the parent in the authenticated tenant and requires
+Workspace view permission before reading child metadata. Missing parents,
+cross-tenant parents, and children outside the specified Workspace return 404;
+a denied view returns 403.
+
+These lists return JSON arrays (including `[]` when empty). Both accept
+`limit` (default 100, maximum 500) and `cursor`. Pass the optional `Next-Cursor`
+response header as the next request's `cursor`; its absence ends traversal.
+Components sort by ascending UUID and generations by ascending number. These
+cursors additionally bind the Workspace and resource type, with the same
+15-minute lifetime and signing-key configuration as Workspace pagination.
+Every page checks current authorization. Traversal is live, not a snapshot.
+
+Components expose stable identity, canonical path, and the current source
+binding when present. Classification and taints come from the current committed
+head; absent classification metadata is omitted rather than inferred. These
+endpoints do not return component contents or historical component snapshots.
+Generations expose persisted immutable metadata, including digest, durability,
+and parent number when present. A newly created Workspace has empty lists;
+component creation and generation commit APIs remain pending.
+
 By default, startup generates a random cursor signing key; a restart invalidates
 outstanding cursors. To preserve cursors across restarts or replicas, set
 `THINKPIXELWS_CURSOR_KEY_FILE` to the same private external file containing
@@ -206,5 +234,5 @@ Point it at a disposable local instance using a URL for an account with CREATEDB
 
 ```sh
 THINKPIXELWS_TEST_DATABASE_URL='postgres://USER:PASSWORD@127.0.0.1:5432/postgres?sslmode=disable' \
-  go test -race ./internal/adapters/httpserver -run 'Test(CreateWorkspace|ReadWorkspaces)Postgres' -v
+  go test -race ./internal/adapters/httpserver -run 'Test(CreateWorkspace|ReadWorkspaces|ReadWorkspaceMetadata)Postgres' -v
 ```

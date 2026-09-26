@@ -16,9 +16,10 @@ import (
 )
 
 type Reader struct {
-	Store   ports.WorkspaceReader
-	Cursors *security.CursorCodec
-	Clock   clockport.Clock
+	Store    ports.WorkspaceReader
+	Metadata ports.WorkspaceMetadataReader
+	Cursors  *security.CursorCodec
+	Clock    clockport.Clock
 }
 
 type Page struct {

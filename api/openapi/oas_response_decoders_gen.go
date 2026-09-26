@@ -1500,7 +1500,7 @@ func decodeImportSourceResponse(resp *http.Response) (res *Operation, _ error) {
 	return res, errors.Wrap(defRes, "error")
 }
 
-func decodeListComponentsResponse(resp *http.Response) (res []Component, _ error) {
+func decodeListComponentsResponse(resp *http.Response) (res *ListComponentsOKHeaders, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -1575,7 +1575,47 @@ func decodeListComponentsResponse(resp *http.Response) (res []Component, _ error
 			}(); err != nil {
 				return res, errors.Wrap(err, "validate")
 			}
-			return response, nil
+			var wrapper ListComponentsOKHeaders
+			wrapper.Response = response
+			h := uri.NewHeaderDecoder(resp.Header)
+			// Parse "Next-Cursor" header.
+			{
+				cfg := uri.HeaderParameterDecodingConfig{
+					Name:    "Next-Cursor",
+					Explode: false,
+				}
+				if err := func() error {
+					if err := h.HasParam(cfg); err == nil {
+						if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+							var wrapperDotNextCursorVal string
+							if err := func() error {
+								val, err := d.DecodeValue()
+								if err != nil {
+									return err
+								}
+
+								c, err := conv.ToString(val)
+								if err != nil {
+									return err
+								}
+
+								wrapperDotNextCursorVal = c
+								return nil
+							}(); err != nil {
+								return err
+							}
+							wrapper.NextCursor.SetTo(wrapperDotNextCursorVal)
+							return nil
+						}); err != nil {
+							return err
+						}
+					}
+					return nil
+				}(); err != nil {
+					return res, errors.Wrap(err, "parse Next-Cursor header")
+				}
+			}
+			return &wrapper, nil
 		default:
 			return res, validate.InvalidContentType(ct)
 		}
@@ -1634,7 +1674,7 @@ func decodeListComponentsResponse(resp *http.Response) (res []Component, _ error
 	return res, errors.Wrap(defRes, "error")
 }
 
-func decodeListGenerationsResponse(resp *http.Response) (res []Generation, _ error) {
+func decodeListGenerationsResponse(resp *http.Response) (res *ListGenerationsOKHeaders, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -1701,7 +1741,47 @@ func decodeListGenerationsResponse(resp *http.Response) (res []Generation, _ err
 			}(); err != nil {
 				return res, errors.Wrap(err, "validate")
 			}
-			return response, nil
+			var wrapper ListGenerationsOKHeaders
+			wrapper.Response = response
+			h := uri.NewHeaderDecoder(resp.Header)
+			// Parse "Next-Cursor" header.
+			{
+				cfg := uri.HeaderParameterDecodingConfig{
+					Name:    "Next-Cursor",
+					Explode: false,
+				}
+				if err := func() error {
+					if err := h.HasParam(cfg); err == nil {
+						if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+							var wrapperDotNextCursorVal string
+							if err := func() error {
+								val, err := d.DecodeValue()
+								if err != nil {
+									return err
+								}
+
+								c, err := conv.ToString(val)
+								if err != nil {
+									return err
+								}
+
+								wrapperDotNextCursorVal = c
+								return nil
+							}(); err != nil {
+								return err
+							}
+							wrapper.NextCursor.SetTo(wrapperDotNextCursorVal)
+							return nil
+						}); err != nil {
+							return err
+						}
+					}
+					return nil
+				}(); err != nil {
+					return res, errors.Wrap(err, "parse Next-Cursor header")
+				}
+			}
+			return &wrapper, nil
 		default:
 			return res, validate.InvalidContentType(ct)
 		}

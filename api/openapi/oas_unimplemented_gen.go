@@ -121,14 +121,14 @@ func (UnimplementedHandler) ImportSource(ctx context.Context, req *ImportRequest
 // ListComponents implements listComponents operation.
 //
 // GET /v1/workspaces/{workspace_id}/components
-func (UnimplementedHandler) ListComponents(ctx context.Context, params ListComponentsParams) (r []Component, _ error) {
+func (UnimplementedHandler) ListComponents(ctx context.Context, params ListComponentsParams) (r *ListComponentsOKHeaders, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
 // ListGenerations implements listGenerations operation.
 //
 // GET /v1/workspaces/{workspace_id}/generations
-func (UnimplementedHandler) ListGenerations(ctx context.Context, params ListGenerationsParams) (r []Generation, _ error) {
+func (UnimplementedHandler) ListGenerations(ctx context.Context, params ListGenerationsParams) (r *ListGenerationsOKHeaders, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
