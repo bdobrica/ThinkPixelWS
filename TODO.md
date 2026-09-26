@@ -150,7 +150,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] IAM-002 Implement claim-to-tenant/principal mapping. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/adapters/oidc ./internal/ports`; `go vet ./internal/security ./internal/adapters/oidc ./internal/ports`; `git diff --check`; `docs/security.md` (mapping configuration and scope)
 - [x] IAM-003 Implement Workspace administrative authorization port. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/ports`; `go vet ./internal/security ./internal/ports`; `git diff --check`; `docs/security.md` (administrative scope and fail-closed enforcement)
 - [ ] IAM-004 Implement OPA/Rego reference authorization adapter.
-- [ ] IAM-005 Implement explicit safe development auth mode.
+- [x] IAM-005 Implement explicit safe development auth mode. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/config ./internal/adapters/httpserver`; `go vet ./internal/security ./internal/config ./internal/adapters/httpserver ./cmd/thinkpixelws`; `git diff --check`; `docs/configuration.md` (opt-in local setup and limitations)
 - [ ] API-001 Implement create Workspace.
 - [ ] API-002 Implement list/get Workspace with tenant-safe pagination.
 - [ ] API-003 Implement component/generation read APIs.

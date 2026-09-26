@@ -16,7 +16,7 @@ ThinkPixelWS keeps runtime authority, source-system credentials, model access, a
 
 The normative Phase 0 architecture, security model, ADRs, provider contracts, OpenAPI 3.1 contract, and machine-readable Workspace/portable-snapshot schemas are complete. The engineering foundation is complete and durable Workspace implementation is underway; [`TODO.md`](TODO.md) tracks remaining implementation work.
 
-An OIDC verifier adapter validates RS256 bearer JWTs against a configured issuer and audience, including expiry and signing-key rotation. Verified claims map to a tenant and principal using explicitly configured claim names. A typed administrative authorization port and fail-closed enforcement helper are available; the policy adapter and HTTP API integration remain pending. See the [authentication boundary](docs/security.md#authentication-and-authorization).
+An OIDC verifier adapter validates RS256 bearer JWTs against a configured issuer and audience, including expiry and signing-key rotation. Verified claims map to a tenant and principal using explicitly configured claim names. A typed administrative authorization port and fail-closed enforcement helper are available; an opt-in, loopback-only development mode supplies bearer authentication and a local create/list/view policy. OPA and production OIDC HTTP integration remain pending. See the [authentication boundary](docs/security.md#authentication-and-authorization).
 
 For current cross-repository priority, follow the ThinkPixel platform [development alignment](https://github.com/bdobrica/ThinkPixel/blob/main/docs/development/ALIGNMENT.md). The immediate WS objective is the smallest durable Workspace path needed to prove that work survives disposable AR compute: materialize work, modify/checkpoint or commit it, destroy the sandbox, attach or recreate fresh compute, and continue with the same logical Workspace without expanding Run authority.
 
@@ -57,6 +57,8 @@ See the [continuous-integration guide](docs/continuous-integration.md) and
 [`PLAN.md`](PLAN.md) for implementation intent and
 [`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) and
 [`docs/phase-1-evidence.md`](docs/phase-1-evidence.md) for phase evidence.
+
+For local authentication setup, see [development auth configuration](docs/configuration.md#development-authentication). Workspace API endpoints remain pending.
 
 Local PostgreSQL development additionally requires Docker with Compose. Use
 `make postgres-up`, then explicitly apply migrations with `make migrate`. See

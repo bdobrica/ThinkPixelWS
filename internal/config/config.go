@@ -37,12 +37,22 @@ var (
 )
 
 // Config contains process-level configuration. It does not contain secret
-// values; credentials are represented only by SecretReference values.
+// values; credentials are represented only by secret locators.
 type Config struct {
+	Auth             AuthConfig                 `json:"auth"`
 	HTTP             HTTPConfig                 `json:"http"`
 	Log              LogConfig                  `json:"log"`
 	Metrics          MetricsConfig              `json:"metrics"`
 	SecretReferences map[string]SecretReference `json:"secret_references,omitempty"`
+}
+
+// AuthConfig defaults to disabled development authentication. TokenFile is a
+// local secret locator, never a credential value.
+type AuthConfig struct {
+	Mode      string `json:"mode"`
+	TenantID  string `json:"tenant_id"`
+	Principal string `json:"principal"`
+	TokenFile string `json:"token_file"`
 }
 
 type HTTPConfig struct {
@@ -72,6 +82,7 @@ type SecretReference struct {
 // Administrative interfaces bind to loopback unless explicitly configured.
 func Defaults() Config {
 	return Config{
+		Auth: AuthConfig{Mode: "disabled"},
 		HTTP: HTTPConfig{
 			ListenAddress:     "127.0.0.1:8080",
 			ReadHeaderTimeout: 5 * time.Second,
@@ -98,6 +109,7 @@ func LoadFromEnvironment() (Config, error) {
 }
 
 type fileConfig struct {
+	Auth *AuthConfig `json:"auth"`
 	HTTP *struct {
 		ListenAddress     *string `json:"listen_address"`
 		ReadHeaderTimeout *string `json:"read_header_timeout"`
@@ -146,6 +158,9 @@ func load(path string, lookup lookupEnv) (Config, error) {
 }
 
 func applyFile(cfg *Config, file fileConfig) error {
+	if file.Auth != nil {
+		cfg.Auth = *file.Auth
+	}
 	if file.HTTP != nil {
 		if file.HTTP.ListenAddress != nil {
 			cfg.HTTP.ListenAddress = *file.HTTP.ListenAddress
@@ -188,6 +203,17 @@ func setDuration(value *string, target *time.Duration) error {
 }
 
 func applyEnvironment(cfg *Config, lookup lookupEnv) error {
+	for key, target := range map[string]*string{
+		"THINKPIXELWS_AUTH_MODE":       &cfg.Auth.Mode,
+		"THINKPIXELWS_AUTH_TENANT_ID":  &cfg.Auth.TenantID,
+		"THINKPIXELWS_AUTH_PRINCIPAL":  &cfg.Auth.Principal,
+		"THINKPIXELWS_AUTH_TOKEN_FILE": &cfg.Auth.TokenFile,
+	} {
+		if v, ok := lookup(key); ok {
+			*target = v
+		}
+	}
+
 	if v, ok := lookup(envListenAddress); ok {
 		cfg.HTTP.ListenAddress = v
 	}
@@ -235,6 +261,26 @@ func applyEnvironment(cfg *Config, lookup lookupEnv) error {
 // Validate rejects unsafe or ambiguous configuration.
 func (cfg Config) Validate() error {
 	var problems []error
+	switch cfg.Auth.Mode {
+	case "disabled":
+		if cfg.Auth.TenantID != "" || cfg.Auth.Principal != "" || cfg.Auth.TokenFile != "" {
+			problems = append(problems, errors.New("auth identity/token settings require explicit development mode"))
+		}
+	case "development":
+		for _, address := range []string{cfg.HTTP.ListenAddress, cfg.Metrics.ListenAddress} {
+			host, _, err := net.SplitHostPort(address)
+			ip := net.ParseIP(host)
+			if err != nil || ip == nil || !ip.IsLoopback() {
+				problems = append(problems, errors.New("development auth requires literal loopback HTTP and metrics listen addresses"))
+			}
+		}
+		if cfg.Auth.TenantID == "" || cfg.Auth.Principal == "" || cfg.Auth.TokenFile == "" {
+			problems = append(problems, errors.New("development auth requires explicit tenant_id, principal, and token_file"))
+		}
+	default:
+		problems = append(problems, errors.New("auth.mode must be disabled or development"))
+	}
+
 	if cfg.SecretReferences == nil {
 		problems = append(problems, errors.New("secret_references must be an object, not null"))
 	}

@@ -68,6 +68,21 @@ func New(cfg config.Config, deps Dependencies) (*Server, error) {
 		deps.Logger = slog.Default()
 	}
 
+	if cfg.Auth.Mode == "development" {
+		auth, err := developmentAuth(cfg.Auth)
+		if err != nil {
+			return nil, err
+		}
+		deps.Logger.Warn("DEVELOPMENT AUTH ENABLED: local single-identity access; do not expose through proxies or tunnels")
+		if deps.API != nil {
+			deps.API = authenticateDevelopment(auth, deps.API)
+		}
+	} else if deps.API != nil {
+		deps.API = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			WriteProblem(w, r, shared.NewError(shared.CodeUnavailable, "API authentication is not configured"))
+		})
+	}
+
 	publicHandler := newPublicHandler(cfg.HTTP, deps)
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("GET /metrics", promhttp.HandlerFor(deps.Registry, promhttp.HandlerOpts{}))
