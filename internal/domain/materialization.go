@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -39,6 +40,18 @@ type MaterializationTarget struct {
 	Architecture string
 }
 
+// MaterializationHandle is an opaque, non-authorizing provider reference.
+// Trusted adapters must supply references only, never credentials or grants.
+// Consumers must not interpret it as a path, URL, or public Workspace identity.
+type MaterializationHandle string
+
+func (h MaterializationHandle) Validate() error {
+	if !utf8.ValidString(string(h)) || !validBoundedSourceValue(string(h), 4096) {
+		return errors.New("materialization handle is invalid")
+	}
+	return nil
+}
+
 // Materialization records a temporary realization of one completed generation.
 // A read-write record is only intent: it does not establish a writer lease,
 // execution authority, or permission to provision or attach storage.
@@ -49,6 +62,7 @@ type Materialization struct {
 	BaseGeneration uint64
 	Provider       string
 	Target         MaterializationTarget
+	Handle         MaterializationHandle
 	Mode           MaterializationMode
 	State          MaterializationState
 	StateVersion   uint64
@@ -80,6 +94,14 @@ func (input NewMaterialization) Materialization(now time.Time) (Materialization,
 }
 
 func (m Materialization) Validate() error {
+	if m.Handle != "" {
+		if err := m.Handle.Validate(); err != nil {
+			return err
+		}
+		if m.State == MaterializationRequested {
+			return errors.New("requested materialization cannot have a provider handle")
+		}
+	}
 	for _, id := range []uuid.UUID{m.TenantID, m.ID, m.WorkspaceID} {
 		if id.Version() != 7 || id.Variant() != uuid.RFC4122 {
 			return errors.New("materialization IDs must be UUIDv7")
@@ -114,9 +136,35 @@ func (m Materialization) Validate() error {
 }
 
 var (
+	ErrMaterializationBindingConflict        = errors.New("materialization binding conflict")
 	ErrInvalidMaterializationStateTransition = errors.New("invalid materialization state transition")
 	ErrMaterializationStateVersionConflict   = errors.New("materialization state version conflict")
 )
+
+// Bind records the result of provider preparation once. A replacement needs a
+// new Materialization; the handle remains available for cleanup after termination.
+// Persistence must compare the observed version, and authority is checked separately.
+func (m Materialization) Bind(handle MaterializationHandle, expectedVersion uint64, now time.Time) (Materialization, error) {
+	if err := m.Validate(); err != nil {
+		return Materialization{}, err
+	}
+	if expectedVersion != m.StateVersion {
+		return Materialization{}, ErrMaterializationStateVersionConflict
+	}
+	if m.State != MaterializationPreparing || m.Handle != "" {
+		return Materialization{}, ErrMaterializationBindingConflict
+	}
+	if err := handle.Validate(); err != nil {
+		return Materialization{}, err
+	}
+	if m.StateVersion >= math.MaxInt64 || now.IsZero() || now.Before(m.UpdatedAt) {
+		return Materialization{}, errors.New("invalid materialization binding version or time")
+	}
+	m.Handle = handle
+	m.StateVersion++
+	m.UpdatedAt = now.UTC()
+	return m, nil
+}
 
 // CanTransitionTo describes lifecycle edges only, never permission to execute
 // or write. Released, failed, and fenced instances cannot be revived.

@@ -54,12 +54,12 @@ func (r *MaterializationRepository) Get(ctx context.Context, tenantID, id uuid.U
 	err := r.db.QueryRowContext(ctx, `
 SELECT tenant_id, materialization_id, workspace_id, base_generation, provider,
  target_id, target_region, target_storage_class, COALESCE(target_architecture,''),
- mode, lifecycle_state, state_version, created_at, updated_at
+ mode, lifecycle_state, state_version, created_at, updated_at, COALESCE(provider_handle,'')
 FROM thinkpixelws.materializations
 WHERE tenant_id = $1 AND materialization_id = $2`, tenantID, id).Scan(
 		&m.TenantID, &m.ID, &m.WorkspaceID, &m.BaseGeneration, &m.Provider,
 		&m.Target.ID, &m.Target.Region, &m.Target.StorageClass, &m.Target.Architecture,
-		&m.Mode, &m.State, &m.StateVersion, &m.CreatedAt, &m.UpdatedAt)
+		&m.Mode, &m.State, &m.StateVersion, &m.CreatedAt, &m.UpdatedAt, &m.Handle)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Materialization{}, ports.ErrMaterializationNotFound
 	}
@@ -75,6 +75,32 @@ WHERE tenant_id = $1 AND materialization_id = $2`, tenantID, id).Scan(
 }
 
 var _ ports.MaterializationRepository = (*MaterializationRepository)(nil)
+
+func (r *MaterializationRepository) Bind(ctx context.Context, tenantID, id uuid.UUID, handle domain.MaterializationHandle, expectedVersion uint64, boundAt time.Time) error {
+	if tenantID == uuid.Nil || id == uuid.Nil || expectedVersion < 1 || expectedVersion >= math.MaxInt64 || boundAt.IsZero() {
+		return errors.New("invalid materialization binding scope, version or time")
+	}
+	if err := handle.Validate(); err != nil {
+		return err
+	}
+	result, err := r.db.ExecContext(ctx, `
+UPDATE thinkpixelws.materializations
+SET provider_handle = $3, state_version = state_version + 1, updated_at = $5
+WHERE tenant_id = $1 AND materialization_id = $2
+  AND lifecycle_state = 'PREPARING' AND provider_handle IS NULL
+  AND state_version = $4 AND updated_at <= $5`, tenantID, id, handle, expectedVersion, boundAt.UTC())
+	if err != nil {
+		return fmt.Errorf("bind materialization: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read materialization binding result: %w", err)
+	}
+	if affected != 1 {
+		return ports.ErrMaterializationStateConflict
+	}
+	return nil
+}
 
 // TransitionState atomically checks the observed tenant, state, version and time.
 // It accepts a shared transaction so business mutations can include audit/outbox.

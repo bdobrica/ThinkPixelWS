@@ -22,5 +22,8 @@ var (
 type MaterializationRepository interface {
 	Create(context.Context, uuid.UUID, domain.Materialization) error
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.Materialization, error)
+	// Bind records an immutable provider handle while PREPARING, incrementing the
+	// shared state version. Absent/foreign/stale/already-bound rows return StateConflict.
+	Bind(context.Context, uuid.UUID, uuid.UUID, domain.MaterializationHandle, uint64, time.Time) error
 	TransitionState(context.Context, uuid.UUID, uuid.UUID, domain.MaterializationState, domain.MaterializationState, uint64, time.Time) error
 }

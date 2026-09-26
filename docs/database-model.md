@@ -39,8 +39,14 @@ Lifecycle transitions compare tenant, current state, expected version, and updat
 time atomically, incrementing the version on success. RELEASED, FAILED, and FENCED
 are terminal; stale or mismatched updates return a conflict.
 A `read-write` request or lifecycle transition grants no writer lease or execution
-authority. Provider binding metadata (`MAT-003`), leases/fencing,
-checkpoint/dirty status, and execution references remain subsequent work.
+authority. Migration `000024` adds an optional, opaque provider handle bounded to
+4096 characters. The repository binds it once during PREPARING using tenant and
+version compare-and-swap, incrementing the shared state version. Handles survive
+terminal transitions for cleanup; replacing a binding requires a new Materialization.
+Trusted providers supply non-authorizing references, never credentials or grants.
+Rolling back `000024` discards handles while preserving core Materialization metadata.
+Provider provisioning/AR attachment, leases/fencing, checkpoint/dirty status, and
+execution references remain subsequent work.
 
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.
 - Generation numbers and event sequence numbers are allocated while locking the Workspace row.

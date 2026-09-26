@@ -159,6 +159,109 @@ func TestMaterializationRepositoryPostgres(t *testing.T) {
 	if _, err := repository.Get(ctx, m.TenantID, uncommitted.ID); !errors.Is(err, ports.ErrMaterializationNotFound) {
 		t.Fatalf("rollback retained row: %v", err)
 	}
+	t.Run("binding", func(t *testing.T) {
+		candidate := requestedMaterialization(t, m.TenantID, m.WorkspaceID)
+		if err := repository.Create(ctx, candidate.TenantID, candidate); err != nil {
+			t.Fatal(err)
+		}
+		at := candidate.UpdatedAt.Add(time.Second)
+		if err := repository.Bind(ctx, candidate.TenantID, candidate.ID, "ref", 1, at); !errors.Is(err, ports.ErrMaterializationStateConflict) {
+			t.Fatalf("requested bind: %v", err)
+		}
+		if err := repository.TransitionState(ctx, candidate.TenantID, candidate.ID, candidate.State, domain.MaterializationPreparing, 1, at); err != nil {
+			t.Fatal(err)
+		}
+		for _, attempt := range []struct {
+			tenant, id uuid.UUID
+			version    uint64
+			at         time.Time
+		}{
+			{otherTenant, candidate.ID, 2, at}, {candidate.TenantID, uuid.Must(uuid.NewV7()), 2, at},
+			{candidate.TenantID, candidate.ID, 1, at}, {candidate.TenantID, candidate.ID, 2, candidate.UpdatedAt},
+		} {
+			if err := repository.Bind(ctx, attempt.tenant, attempt.id, "ref", attempt.version, attempt.at); !errors.Is(err, ports.ErrMaterializationStateConflict) {
+				t.Fatalf("scoped bind: %v", err)
+			}
+		}
+		for _, value := range []string{"", " padded", "control\n", strings.Repeat("x", 4097)} {
+			_, err := db.ExecContext(ctx, `UPDATE thinkpixelws.materializations SET provider_handle=$3 WHERE tenant_id=$1 AND materialization_id=$2`, candidate.TenantID, candidate.ID, value)
+			assertMaterializationPGError(t, err, "23514")
+		}
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback()
+		if err := NewMaterializationRepository(tx).Bind(ctx, candidate.TenantID, candidate.ID, "rolled-back", 2, at); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Rollback(); err != nil {
+			t.Fatal(err)
+		}
+		got, err := repository.Get(ctx, candidate.TenantID, candidate.ID)
+		if err != nil || got.Handle != "" || got.StateVersion != 2 {
+			t.Fatalf("rollback: %#v %v", got, err)
+		}
+		results := make(chan error, 2)
+		for _, handle := range []domain.MaterializationHandle{"opaque-a", "opaque-b"} {
+			go func() { results <- repository.Bind(ctx, candidate.TenantID, candidate.ID, handle, 2, at) }()
+		}
+		successes, conflicts := 0, 0
+		for range 2 {
+			err := <-results
+			if err == nil {
+				successes++
+			} else if errors.Is(err, ports.ErrMaterializationStateConflict) {
+				conflicts++
+			} else {
+				t.Fatal(err)
+			}
+		}
+		if successes != 1 || conflicts != 1 {
+			t.Fatalf("winners=%d conflicts=%d", successes, conflicts)
+		}
+		got, err = NewMaterializationRepository(reopened).Get(ctx, candidate.TenantID, candidate.ID)
+		if err != nil || (got.Handle != "opaque-a" && got.Handle != "opaque-b") {
+			t.Fatalf("durable binding: %#v %v", got, err)
+		}
+		want := candidate
+		want.State, want.StateVersion, want.UpdatedAt, want.Handle = domain.MaterializationPreparing, 3, at, got.Handle
+		if got != want {
+			t.Fatalf("binding changed metadata: %#v", got)
+		}
+		if err := repository.Bind(ctx, candidate.TenantID, candidate.ID, "replacement", 3, at); !errors.Is(err, ports.ErrMaterializationStateConflict) {
+			t.Fatalf("replacement: %v", err)
+		}
+		if err := repository.TransitionState(ctx, candidate.TenantID, candidate.ID, got.State, domain.MaterializationFailed, 2, at); !errors.Is(err, ports.ErrMaterializationStateConflict) {
+			t.Fatalf("binding failed to invalidate lifecycle version: %v", err)
+		}
+		if err := repository.TransitionState(ctx, candidate.TenantID, candidate.ID, got.State, domain.MaterializationFailed, 3, at); err != nil {
+			t.Fatal(err)
+		}
+		got, err = repository.Get(ctx, candidate.TenantID, candidate.ID)
+		if err != nil || got.Handle != want.Handle {
+			t.Fatalf("cleanup reference: %#v %v", got, err)
+		}
+		if err := repository.Bind(ctx, candidate.TenantID, candidate.ID, "replacement", 4, at); !errors.Is(err, ports.ErrMaterializationStateConflict) {
+			t.Fatalf("terminal bind: %v", err)
+		}
+		// Rolling back only this additive migration preserves core metadata.
+		for _, suffix := range []string{"down", "up"} {
+			data, err := os.ReadFile("../../../migrations/000024_materialization_binding." + suffix + ".sql")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.ExecContext(ctx, string(data)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want = got
+		want.Handle = ""
+		got, err = repository.Get(ctx, candidate.TenantID, candidate.ID)
+		if err != nil || got != want {
+			t.Fatalf("migration core metadata: %#v %v", got, err)
+		}
+	})
 	t.Run("lifecycle", func(t *testing.T) {
 		at := m.UpdatedAt.Add(time.Second)
 		for _, attempt := range []struct {
@@ -238,8 +341,8 @@ func TestMaterializationRepositoryPostgres(t *testing.T) {
 	})
 
 	// The new migration can be rolled back and reapplied without changing canonical state.
-	for _, suffix := range []string{"down", "up"} {
-		data, err := os.ReadFile("../../../migrations/000023_materializations." + suffix + ".sql")
+	for _, migration := range []string{"000024_materialization_binding.down", "000023_materializations.down", "000023_materializations.up", "000024_materialization_binding.up"} {
+		data, err := os.ReadFile("../../../migrations/" + migration + ".sql")
 		if err != nil {
 			t.Fatal(err)
 		}

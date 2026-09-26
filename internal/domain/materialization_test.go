@@ -28,6 +28,59 @@ func TestNewMaterialization(t *testing.T) {
 	}
 }
 
+func TestMaterializationBinding(t *testing.T) {
+	at := time.Now().UTC()
+	m, err := materializationInput().Materialization(at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Bind("opaque-ref", 1, at); !errors.Is(err, ErrMaterializationBindingConflict) {
+		t.Fatalf("requested binding: %v", err)
+	}
+	m, err = m.TransitionState(MaterializationPreparing, 1, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, handle := range []MaterializationHandle{"", " padded", "control\n", MaterializationHandle(strings.Repeat("x", 4097)), MaterializationHandle(string([]byte{0xff}))} {
+		if _, err := m.Bind(handle, 2, at); err == nil {
+			t.Fatal("invalid handle accepted")
+		}
+	}
+	if _, err := m.Bind("ref", 1, at); !errors.Is(err, ErrMaterializationStateVersionConflict) {
+		t.Fatalf("stale binding: %v", err)
+	}
+	for _, when := range []time.Time{{}, at.Add(-time.Second)} {
+		if _, err := m.Bind("ref", 2, when); err == nil {
+			t.Fatal("invalid time accepted")
+		}
+	}
+	exhausted := m
+	exhausted.StateVersion = math.MaxInt64
+	if _, err := exhausted.Bind("ref", math.MaxInt64, at); err == nil {
+		t.Fatal("exhausted version accepted")
+	}
+	handle := MaterializationHandle(strings.Repeat("界", 4096))
+	bound, err := m.Bind(handle, 2, at.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := m
+	want.Handle, want.StateVersion, want.UpdatedAt = handle, 3, at.Add(time.Second)
+	if bound != want || m.Handle != "" {
+		t.Fatal("binding changed unexpected metadata")
+	}
+	if _, err := bound.Bind("replacement", 3, bound.UpdatedAt); !errors.Is(err, ErrMaterializationBindingConflict) {
+		t.Fatalf("replacement: %v", err)
+	}
+	failed, err := bound.TransitionState(MaterializationFailed, 3, bound.UpdatedAt)
+	if err != nil || failed.Handle != handle {
+		t.Fatalf("terminal cleanup reference lost: %v", err)
+	}
+	if _, err := failed.Bind("replacement", 4, bound.UpdatedAt); !errors.Is(err, ErrMaterializationBindingConflict) {
+		t.Fatalf("terminal bind: %v", err)
+	}
+}
+
 func TestMaterializationValidation(t *testing.T) {
 	tests := map[string]func(*Materialization){
 		"missing tenant":      func(m *Materialization) { m.TenantID = uuid.Nil },
