@@ -316,11 +316,37 @@ does not restore content, enforce leases, or make a Materialization READY.
 It supports both local-path and CSI filesystem volumes. Tests exercise a local
 filesystem, including reopening storage and retrying with existing content.
 
-Process configuration/wiring, invoking the layout helper during prepare, restore and
-Materialization lifecycle orchestration, AR attachment, and CSI capability
-qualification remain pending in TODO.md. This adapter is not yet exposed through
-the process JSON/environment loader. Tests use local HTTP API fixtures; no live
-cluster or CSI behavior has been qualified.
+`internal/app/materialization.Preparer` coordinates an already-authorized request
+through `REQUESTED → PREPARING → READY`. It persists the opaque PVC handle before
+content work, resumes from a persisted binding, and uses the existing repository
+state/version compare-and-swap for lifecycle changes. Pending mounting returns
+`PREPARING`; errors retain progress and storage for retry or authorized cleanup.
+A ready replay returns the existing record without restoring over working edits.
+Lost, replaced, or releasing storage cannot become ready. Preparation does not
+acquire a writer lease, activate execution, or publish an AR binding.
+
+The coordinator requires a `MaterializationContentPreparer`. The mounted adapter
+in `internal/adapters/workingstorage/mounted` composes two trusted dependencies:
+`WithRoot`, which exclusively mounts the exact volume with execution detached,
+and `Restore`, which restores/verifies the selected generation and supplies its
+complete component membership. It rechecks the persisted request after obtaining
+exclusive access, restores content, invokes the layout helper, and persists
+readiness before releasing exclusivity. Restoring must be idempotent after partial
+failure. A missing restore implementation fails; an empty PVC is never implicitly
+treated as a restored generation. `WithRoot` may start a scheduling consumer while
+storage is pending, which avoids blocking `WaitForFirstConsumer` provisioning.
+Readiness still requires the same PVC UID to be bound after preparation.
+
+This is an internal orchestration path, not a deployed prepare endpoint. Process/API
+wiring, a Kubernetes mount worker, the generation restore backend, AR attachment,
+and CSI capability qualification remain pending. The caller must authorize each
+operation and provide short repository mutations coupled to audit/outbox; a
+database transaction must not span provider or restore I/O. The process
+JSON/environment loader does not yet expose these adapters. Preparation tests
+compose the real coordinator, Kubernetes client/provider, and mounted/layout
+adapters using a local HTTP API fixture, an in-memory CAS repository, a fixture
+generation restore, and a local filesystem. They do not qualify PostgreSQL,
+actual Pod mounting, live-cluster storage, or CSI behavior.
 
 For the inspected Raspberry Pi cluster and CSI backend assessment, see
 [homelab storage](homelab-storage.md).
