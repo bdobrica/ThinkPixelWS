@@ -16,8 +16,36 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bdobrica/ThinkPixelWS/internal/security"
 	"github.com/golang-jwt/jwt/v5"
 )
+
+func TestVerifiedIdentityMapping(t *testing.T) {
+	f := newFixture(t)
+	a, err := security.NewAuthenticator(f.verifier, security.ClaimMapping{TenantClaim: "tenant_id", PrincipalClaim: "sub"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := f.claims()
+	claims["tenant_id"] = "01900000-0000-7000-8000-000000000001"
+	raw := sign(t, claims, f.kid, jwt.SigningMethodRS256, f.private)
+	identity, err := a.Authenticate(context.Background(), raw)
+	if err != nil || identity.TenantID.String() != claims["tenant_id"] || identity.Principal != claims["sub"] {
+		t.Fatalf("mapped identity: %v, %v", identity, err)
+	}
+	// A trusted signature alone is insufficient when identity claims are missing.
+	delete(claims, "tenant_id")
+	raw = sign(t, claims, f.kid, jwt.SigningMethodRS256, f.private)
+	if got, err := a.Authenticate(context.Background(), raw); err != security.ErrUnauthenticated || got != (security.Identity{}) {
+		t.Fatalf("accepted missing tenant: %v, %v", got, err)
+	}
+	claims["tenant_id"] = "01900000-0000-7000-8000-000000000001"
+	claims["iss"] = "https://untrusted.example"
+	raw = sign(t, claims, f.kid, jwt.SigningMethodRS256, f.private)
+	if got, err := a.Authenticate(context.Background(), raw); err != security.ErrUnauthenticated || got != (security.Identity{}) {
+		t.Fatalf("accepted untrusted issuer: %v, %v", got, err)
+	}
+}
 
 type testClock struct{ seconds atomic.Int64 }
 
