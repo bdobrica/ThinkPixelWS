@@ -236,3 +236,23 @@ Point it at a disposable local instance using a URL for an account with CREATEDB
 THINKPIXELWS_TEST_DATABASE_URL='postgres://USER:PASSWORD@127.0.0.1:5432/postgres?sslmode=disable' \
   go test -race ./internal/adapters/httpserver -run 'Test(CreateWorkspace|ReadWorkspaces|ReadWorkspaceMetadata)Postgres' -v
 ```
+
+## Kubernetes working-storage client
+
+`internal/adapters/workingstorage/kubernetes.New` accepts trusted operator
+configuration: `Kubeconfig` (an explicit local secret-file path), optional `Context`,
+required `Namespace`, and `Timeout` (default 30 seconds, maximum 5 minutes).
+With no kubeconfig path, it uses the WS Pod's in-cluster service account. It does
+not implicitly select `$KUBECONFIG` or a developer's default kubeconfig, and a
+failed explicit configuration does not fall back to another cluster.
+
+Kubeconfigs may invoke credential plugins; accept them only from the operator,
+never from Workspace contents or API callers. Credentials stay in WS client
+transports. The namespace scopes provider resource requests; Kubernetes RBAC must
+limit the service account independently, and AG authorization is still required.
+
+The adapter supplies core-v1 and discovery clients. Construction does not contact
+the cluster or create resources. Service startup/provider wiring and capability
+checks will be added with the Kubernetes provider tasks; this configuration is
+not yet exposed through the process JSON/environment loader. No PVC, snapshot,
+or sandbox lifecycle operation is implemented by this client setup.
