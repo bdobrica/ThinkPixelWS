@@ -167,7 +167,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 ## Phase 3 — Kubernetes working Materializations
 
 - [x] MAT-001 Add Materialization schema/domain/repository. — completed 2026-09-26, commit: this change, evidence: domain/repository race tests; `TestMaterializationRepositoryPostgres` (fresh-connection persistence, tenant/generation isolation, constraints, transaction rollback, migration down/up); existing HTTP PostgreSQL integration tests; focused vet and migration checksums. Persists REQUESTED metadata only; lifecycle, bindings, leases, and Kubernetes provisioning remain separate tasks.
-- [ ] MAT-002 Add Materialization lifecycle state machine.
+- [x] MAT-002 Add Materialization lifecycle state machine. — completed 2026-09-26, commit: this change, evidence: domain transition/guard race tests; real PostgreSQL lifecycle persistence, concurrent compare-and-swap, tenant isolation, stale-state/version/time rejection, and rollback; focused vet. Terminal states cannot revive; authority, leases, and provider operations remain separate tasks.
 - [ ] MAT-003 Add Materialization provider-neutral binding metadata.
 - [ ] MAT-004 Add writable MaterializationLease schema/domain.
 - [ ] MAT-005 Add monotonic Workspace writer fence.
@@ -551,3 +551,5 @@ YYYY-MM-DD | `ARC-...` | `<sha>` | `<commands/artifacts>` | `<notes>`
 2026-09-26 | `API-003` | this change | PostgreSQL HTTP metadata integration and boundary race tests; live service read/cursor continuation after restart; focused vet/build; OpenAPI checks | Read-only component/generation metadata; additive Next-Cursor headers preserve array bodies; explicit classification string schema fixes absent-field serialization. Mutations remain separate.
 
 2026-09-26 | `MAT-001` | this change | Domain/repository race tests; real PostgreSQL persistence/isolation/rollback and migration down/up; existing HTTP integration tests; focused vet; migration checksums | Core Materialization records only, with tenant-scoped completed-generation FK. No execution authority, writable lease, or cluster resources created.
+
+2026-09-26 | `MAT-002` | this change | Domain/repository race tests against real PostgreSQL; concurrent transition, persistence, isolation, rollback; focused vet | Lifecycle metadata transitions with tenant/state/version compare-and-swap. Corrected terminal FENCED diagram; no lease or execution authority granted.

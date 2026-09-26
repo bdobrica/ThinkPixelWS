@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -110,4 +111,54 @@ func (m Materialization) Validate() error {
 		return errors.New("materialization timestamps are invalid")
 	}
 	return nil
+}
+
+var (
+	ErrInvalidMaterializationStateTransition = errors.New("invalid materialization state transition")
+	ErrMaterializationStateVersionConflict   = errors.New("materialization state version conflict")
+)
+
+// CanTransitionTo describes lifecycle edges only, never permission to execute
+// or write. Released, failed, and fenced instances cannot be revived.
+func (state MaterializationState) CanTransitionTo(next MaterializationState) bool {
+	switch state {
+	case MaterializationRequested:
+		return next == MaterializationPreparing || next == MaterializationFailed
+	case MaterializationPreparing:
+		return next == MaterializationReady || next == MaterializationFailed
+	case MaterializationReady:
+		return next == MaterializationActive || next == MaterializationReleasing
+	case MaterializationActive:
+		return next == MaterializationCheckpointing || next == MaterializationReleasing || next == MaterializationFenced
+	case MaterializationCheckpointing:
+		return next == MaterializationActive || next == MaterializationFailed || next == MaterializationFenced
+	case MaterializationReleasing:
+		return next == MaterializationReleased || next == MaterializationFailed
+	default:
+		return false
+	}
+}
+
+// TransitionState applies a lifecycle edge to a copy. Persistence must compare
+// the observed state/version; callers must separately enforce authority and leases.
+func (m Materialization) TransitionState(next MaterializationState, expectedVersion uint64, now time.Time) (Materialization, error) {
+	if err := m.Validate(); err != nil {
+		return Materialization{}, err
+	}
+	if expectedVersion != m.StateVersion {
+		return Materialization{}, ErrMaterializationStateVersionConflict
+	}
+	if !m.State.CanTransitionTo(next) {
+		return Materialization{}, fmt.Errorf("%w: %s to %s", ErrInvalidMaterializationStateTransition, m.State, next)
+	}
+	if m.StateVersion >= math.MaxInt64 {
+		return Materialization{}, errors.New("materialization state version exhausted")
+	}
+	if now.IsZero() || now.Before(m.UpdatedAt) {
+		return Materialization{}, errors.New("materialization transition time precedes last update")
+	}
+	m.State = next
+	m.StateVersion++
+	m.UpdatedAt = now.UTC()
+	return m, nil
 }

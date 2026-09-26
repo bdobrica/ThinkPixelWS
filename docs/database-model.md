@@ -35,8 +35,11 @@ identity, completed base-generation reference, provider, requested target, mode,
 state/version, and creation/update timestamps. The repository creates only
 `REQUESTED` records and reads by tenant and Materialization ID; it accepts a
 shared SQL transaction for future atomic business/audit/outbox operations.
-A `read-write` request grants no writer lease or execution authority. Lifecycle
-transitions (`MAT-002`), provider binding metadata (`MAT-003`), leases/fencing,
+Lifecycle transitions compare tenant, current state, expected version, and update
+time atomically, incrementing the version on success. RELEASED, FAILED, and FENCED
+are terminal; stale or mismatched updates return a conflict.
+A `read-write` request or lifecycle transition grants no writer lease or execution
+authority. Provider binding metadata (`MAT-003`), leases/fencing,
 checkpoint/dirty status, and execution references remain subsequent work.
 
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.

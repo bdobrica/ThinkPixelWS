@@ -129,10 +129,10 @@ stateDiagram-v2
     READY --> ACTIVE
     ACTIVE --> CHECKPOINTING
     CHECKPOINTING --> ACTIVE
+    CHECKPOINTING --> FENCED: lease lost or replaced
     ACTIVE --> FENCED: lease lost or replaced
     READY --> RELEASING
     ACTIVE --> RELEASING
-    FENCED --> RELEASING
     RELEASING --> RELEASED
     REQUESTED --> FAILED
     PREPARING --> FAILED

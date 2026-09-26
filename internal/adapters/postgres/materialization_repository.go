@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/bdobrica/ThinkPixelWS/internal/ports"
@@ -73,3 +75,37 @@ WHERE tenant_id = $1 AND materialization_id = $2`, tenantID, id).Scan(
 }
 
 var _ ports.MaterializationRepository = (*MaterializationRepository)(nil)
+
+// TransitionState atomically checks the observed tenant, state, version and time.
+// It accepts a shared transaction so business mutations can include audit/outbox.
+func (r *MaterializationRepository) TransitionState(ctx context.Context, tenantID, id uuid.UUID, current, next domain.MaterializationState, expectedVersion uint64, transitionedAt time.Time) error {
+	if tenantID == uuid.Nil || id == uuid.Nil {
+		return errors.New("tenant and materialization IDs are required")
+	}
+	if expectedVersion < 1 || expectedVersion >= math.MaxInt64 {
+		return errors.New("expected materialization state version is outside the supported range")
+	}
+	if !current.CanTransitionTo(next) {
+		return fmt.Errorf("%w: %s to %s", domain.ErrInvalidMaterializationStateTransition, current, next)
+	}
+	if transitionedAt.IsZero() {
+		return errors.New("materialization transition time is required")
+	}
+	result, err := r.db.ExecContext(ctx, `
+UPDATE thinkpixelws.materializations
+SET lifecycle_state = $5, state_version = state_version + 1, updated_at = $6
+WHERE tenant_id = $1 AND materialization_id = $2
+  AND lifecycle_state = $3 AND state_version = $4 AND updated_at <= $6`,
+		tenantID, id, current, expectedVersion, next, transitionedAt.UTC())
+	if err != nil {
+		return fmt.Errorf("transition materialization state: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read materialization transition result: %w", err)
+	}
+	if affected != 1 {
+		return ports.ErrMaterializationStateConflict
+	}
+	return nil
+}

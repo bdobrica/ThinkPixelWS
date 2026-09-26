@@ -159,6 +159,84 @@ func TestMaterializationRepositoryPostgres(t *testing.T) {
 	if _, err := repository.Get(ctx, m.TenantID, uncommitted.ID); !errors.Is(err, ports.ErrMaterializationNotFound) {
 		t.Fatalf("rollback retained row: %v", err)
 	}
+	t.Run("lifecycle", func(t *testing.T) {
+		at := m.UpdatedAt.Add(time.Second)
+		for _, attempt := range []struct {
+			tenant, id uuid.UUID
+			state      domain.MaterializationState
+			version    uint64
+			at         time.Time
+		}{
+			{otherTenant, m.ID, m.State, 1, at},
+			{m.TenantID, uuid.Must(uuid.NewV7()), m.State, 1, at},
+			{m.TenantID, m.ID, domain.MaterializationPreparing, 1, at},
+			{m.TenantID, m.ID, m.State, 2, at},
+			{m.TenantID, m.ID, m.State, 1, m.UpdatedAt.Add(-time.Second)},
+		} {
+			next := domain.MaterializationPreparing
+			if attempt.state == domain.MaterializationPreparing {
+				next = domain.MaterializationReady
+			}
+			if err := repository.TransitionState(ctx, attempt.tenant, attempt.id, attempt.state, next, attempt.version, attempt.at); !errors.Is(err, ports.ErrMaterializationStateConflict) {
+				t.Fatalf("expected scoped CAS conflict: %v", err)
+			}
+		}
+		// Racing callers observing the same version must have exactly one winner.
+		results := make(chan error, 2)
+		for range 2 {
+			go func() {
+				results <- repository.TransitionState(ctx, m.TenantID, m.ID, m.State, domain.MaterializationPreparing, 1, at)
+			}()
+		}
+		successes, conflicts := 0, 0
+		for range 2 {
+			err := <-results
+			if err == nil {
+				successes++
+			} else if errors.Is(err, ports.ErrMaterializationStateConflict) {
+				conflicts++
+			} else {
+				t.Fatal(err)
+			}
+		}
+		if successes != 1 || conflicts != 1 {
+			t.Fatalf("winners=%d conflicts=%d", successes, conflicts)
+		}
+		got, err := NewMaterializationRepository(reopened).Get(ctx, m.TenantID, m.ID)
+		want := m
+		want.State, want.StateVersion, want.UpdatedAt = domain.MaterializationPreparing, 2, at
+		if err != nil || got != want {
+			t.Fatalf("durable transition: %#v %v", got, err)
+		}
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback()
+		if err := NewMaterializationRepository(tx).TransitionState(ctx, m.TenantID, m.ID, got.State, domain.MaterializationReady, got.StateVersion, at); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Rollback(); err != nil {
+			t.Fatal(err)
+		}
+		got, err = repository.Get(ctx, m.TenantID, m.ID)
+		if err != nil || got != want {
+			t.Fatalf("rollback changed state: %#v %v", got, err)
+		}
+		for _, next := range []domain.MaterializationState{domain.MaterializationReady, domain.MaterializationActive, domain.MaterializationCheckpointing, domain.MaterializationActive, domain.MaterializationReleasing, domain.MaterializationReleased} {
+			if err := repository.TransitionState(ctx, m.TenantID, m.ID, got.State, next, got.StateVersion, at); err != nil {
+				t.Fatal(err)
+			}
+			got, err = repository.Get(ctx, m.TenantID, m.ID)
+			if err != nil || got.State != next {
+				t.Fatalf("lifecycle persistence: %#v %v", got, err)
+			}
+		}
+		if err := repository.TransitionState(ctx, m.TenantID, m.ID, got.State, domain.MaterializationActive, got.StateVersion, at); !errors.Is(err, domain.ErrInvalidMaterializationStateTransition) {
+			t.Fatalf("terminal revival: %v", err)
+		}
+	})
+
 	// The new migration can be rolled back and reapplied without changing canonical state.
 	for _, suffix := range []string{"down", "up"} {
 		data, err := os.ReadFile("../../../migrations/000023_materializations." + suffix + ".sql")
