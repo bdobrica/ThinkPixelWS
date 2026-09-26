@@ -58,3 +58,40 @@ type ProfileProvider interface {
 - `PortableStore` publishes a manifest only after referenced immutable blobs exist and verify. Deletes honor retention/legal hold.
 - Plaintext data keys are zeroizable, process-local, never logged/serialized, and have a bounded lifetime. Wrapped keys carry provider/key/version references only.
 - Profile handles and profile encryption domains are separate from ordinary Workspace content.
+
+## AR storage binding result
+
+The internal `materialization.BindingReader` resolves an already-authorized
+Materialization into a serializable storage description. The envelope contains
+`tenantId`, `workspaceId`, `generation` (base generation), `materializationId`,
+`stateVersion`, `targetId`, `accessMode`, and `storage`. Storage contains the opaque
+`handle`, versioned `kind`, and provider-specific `reference`. No credentials are
+included. AR selects a trusted adapter by kind and must reject unknown kinds.
+This is not yet an HTTP endpoint or an implemented AR integration.
+
+For `kind: kubernetes-pvc-v1`, reference fields are:
+
+| Field | Meaning |
+| --- | --- |
+| `namespace` | Configured namespace of the existing PVC; execution must use this namespace. |
+| `claimName` | Existing PVC name, never a request to create storage. |
+| `claimUid` | Expected PVC UID, checked against the persisted opaque handle. |
+| `mountPath` | `/workspace`, containing the prepared component layout. |
+| `readOnly` | True for read-only Materializations; enforce on the Pod PVC volume source and every container mount. |
+
+Only READY or ACTIVE Materializations with existing bound filesystem storage
+produce a result. The reader rechecks persisted metadata after provider I/O;
+concurrent changes fail with a state conflict and require a fresh read. Resolution
+is repeatable and does not mutate lifecycle, create Pods, or allocate/release PVCs.
+
+The result is storage metadata, not a capability or current lease proof. Before
+attachment, the trusted runtime must validate current AG authority, exact target
+and scope, and current writer lease/fence for writable access. It must detach old
+execution before replacement attachment and prevent overlapping writers. Whole
+volume mounting is valid only when the grant covers its entire component scope;
+this result does not implement component filtering. Kubernetes RWO is not writer
+fencing. A consumer must recheck UID and prevent PVC replacement during attachment:
+Pod PVC references identify claims by name and do not offer a UID precondition.
+Treat a changed UID as conflict, never silently adopt the replacement. Lifecycle,
+lease and provider checks are observations, not a distributed atomic attachment
+transaction. Revocation and stale execution termination remain runtime duties.
