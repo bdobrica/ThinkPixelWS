@@ -1,0 +1,2 @@
+DROP TABLE thinkpixelws.materialization_leases;
+ALTER TABLE thinkpixelws.materializations DROP CONSTRAINT materializations_lease_reference;

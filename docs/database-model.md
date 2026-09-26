@@ -45,8 +45,17 @@ version compare-and-swap, incrementing the shared state version. Handles survive
 terminal transitions for cleanup; replacing a binding requires a new Materialization.
 Trusted providers supply non-authorizing references, never credentials or grants.
 Rolling back `000024` discards handles while preserving core Materialization metadata.
-Provider provisioning/AR attachment, leases/fencing, checkpoint/dirty status, and
-execution references remain subsequent work.
+Migration `000025` adds writable `materialization_leases` metadata: UUIDv7 lease
+identity, holder reference, positive fencing token, issued/renewed/expiry times,
+and optional release time. A composite foreign key binds the lease to the same
+tenant, Workspace, and writable Materialization, preventing read-only references.
+The domain constructor uses the ADR-0002 60-second duration; its renewal interval
+constant is 20 seconds. Timestamps must be ordered, and release may follow expiry.
+Rolling back `000025` discards leases but preserves Materializations and generations.
+This schema/domain does not acquire a lease or grant authority. Workspace fence
+allocation, current-writer uniqueness, renewal/expiry operations, and commit fencing
+remain MAT-005/006/008/009. Provider provisioning/AR attachment, checkpoint/dirty
+status, and execution references also remain subsequent work.
 
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.
 - Generation numbers and event sequence numbers are allocated while locking the Workspace row.
