@@ -59,6 +59,33 @@ type ProfileProvider interface {
 - Plaintext data keys are zeroizable, process-local, never logged/serialized, and have a bounded lifetime. Wrapped keys carry provider/key/version references only.
 - Profile handles and profile encryption domains are separate from ordinary Workspace content.
 
+## Materialization restart recovery
+
+The internal `materialization.Recoverer.Recover` takes an authorized tenant-scoped
+ID and reloads persisted intent. REQUESTED/PREPARING resumes the existing prepare
+path; RELEASING resumes release. Allocation interrupted before handle persistence
+reuses the deterministic, ownership-checked PVC. A persisted handle must still
+match its PVC UID; missing/replaced storage is never silently reconstructed.
+Partial preparation retries verified restore under exclusive mounted access.
+Deletion completes only after confirmed absence, including when deletion finished
+before the previous process persisted RELEASED.
+
+READY/ACTIVE and terminal records return unchanged without provider I/O: a restart
+never restores over working edits, releases continuation storage, revives a fenced
+writer, or resets lease/fence authority. This is not storage health verification;
+use the status/binding readers for observations and current attachment checks.
+CHECKPOINTING returns a state conflict with the unchanged record, requiring
+checkpoint recovery rather than an assumed successful checkpoint.
+
+Recovery inherits prepare/release authorization, detachment, retention and
+independently committed audit/outbox requirements. Callers must re-establish these
+preconditions after restart; persisted lifecycle is not an authorization grant.
+Pending work retains its state for another retry, and provider/persistence errors
+remain visible. This is a per-record application entry point, not an automatic
+startup scan or background loop. Tests reconstruct services, repository objects
+from serialized records, and HTTP clients while retaining the external PVC fixture
+and mounted files; they do not qualify real process/PostgreSQL restarts.
+
 ## Materialization release
 
 The internal `materialization.Releaser` accepts an authorized, tenant-scoped ID.

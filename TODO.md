@@ -191,7 +191,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [ ] CHK-003 Implement checkpoint fallback/unsupported capability behavior.
 - [ ] REC-001 Add Materialization reconciler.
 - [ ] REC-002 Recover orphaned PVC/Materialization bindings.
-- [ ] REC-003 Recover after WS API/reconciler restart.
+- [x] REC-003 Recover after WS API/reconciler restart. — internal per-ID recovery resumes persisted preparation/release intent with fresh service/provider instances, preserves working/terminal state, and reports CHECKPOINTING as unresolved. HTTP fixture + mounted-file race tests exercise interrupted allocation, restore and deletion. Startup scanning/scheduling (REC-001), process/API wiring and real process/PostgreSQL restart qualification remain pending.
 - [ ] REC-004 Preserve hot storage after AR sandbox deletion.
 - [ ] REC-005 Attach replacement sandbox to existing Materialization where supported.
 - [ ] K8S-012 Add disposable-cluster integration tests.

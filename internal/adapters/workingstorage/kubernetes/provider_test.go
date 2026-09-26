@@ -20,6 +20,7 @@ import (
 )
 
 type storageFixture struct {
+	url                     string
 	mu                      sync.Mutex
 	pvc                     *corev1.PersistentVolumeClaim
 	discovery               bool
@@ -109,6 +110,7 @@ func providerFixture(t *testing.T) (*Provider, *storageFixture, domain.Materiali
 			t.Errorf("unexpected method %s", r.Method)
 		}
 	}))
+	f.url = server.URL
 	t.Cleanup(server.Close)
 	client, err := newClient(Config{Namespace: "ws-test"}, func() (*rest.Config, error) {
 		return &rest.Config{Host: server.URL, ContentConfig: rest.ContentConfig{ContentType: "application/json"}}, nil
