@@ -1,5 +1,54 @@
 # Database development
 
+## Generation commit boundary
+
+[`ports.GenerationCommitter`](../internal/ports/generation_committer.go) has a
+[PostgreSQL implementation](../internal/adapters/postgres/generation_committer.go)
+for publishing prepared content from an ACTIVE or CHECKPOINTING writable
+Materialization. The caller supplies tenant/Workspace/Materialization identity,
+lease and fence, expected head, captured Materialization state version, stable
+generation ID, manifest digest, durability, principal and optional Execution ID.
+The adapter creates the next immutable generation, records the previous head as
+its parent, advances the head and writes linked audit/outbox records in one
+serializable transaction. It checks the writer both before mutation and just
+before database commit. Failed publication rolls back all four records.
+
+This is an internal metadata operation. Trusted WS orchestration must authorize
+the caller under AG governance and capture, persist and verify a complete
+immutable manifest and its content before calling it. Provider IO must happen
+outside the transaction; a digest supplied by an agent or a mutable PVC reference
+is not evidence of a completed capture. The adapter does not inspect blob content
+or implement capture, component snapshot references, Run provenance, HTTP
+idempotency or the public commit endpoint. It preserves Materialization state and
+base generation and does not claim that later filesystem writes are clean.
+
+The outbox event `workspace.thinkpixel.io/generation.committed.v1` uses the new
+generation ID as its aggregate, version/sequence 1, and payload schema
+`generation-committed.v1`. Payload and audit metadata contain only `workspaceId`,
+`materializationId`, `generationId` and `generation`. The audit action is
+`workspace.commit`; audit and outbox share a transaction ID.
+
+Stale writer/head checks return the existing port conflict errors. PostgreSQL
+serialization failures propagate; callers must reconcile the stable generation
+ID after an ambiguous database result before retrying. Repeating an already
+published expected head fails rather than silently creating another generation.
+Do not delete prepared content merely because publication reported an error.
+
+Focused integration tests use a disposable database created by each test and
+require a test-only PostgreSQL account with `CREATEDB`:
+
+```sh
+THINKPIXELWS_TEST_DATABASE_URL='postgres://.../postgres?sslmode=disable' \
+  go test -race ./internal/adapters/postgres \
+  -run 'TestGenerationCommit|TestMaterializationWriterGuard' -count=1
+```
+
+These tests verify metadata publication, immutable readback, writer/head/version
+rejection, competing commits, audit/outbox rollback and expiry during publication.
+They do not qualify snapshot capture or sandbox-to-generation recovery.
+
+## Local database setup
+
 Local database development uses PostgreSQL 17.6 through Docker Compose. The
 image and migration tool are pinned by tag and multi-platform digest. PostgreSQL
 binds to loopback only and persists data in the `postgres-data` Compose volume.

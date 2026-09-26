@@ -241,14 +241,14 @@ The following remain valuable but should not block the first integrated demo/RC 
 
 ## Phase 5 — Commit, generation advancement, snapshots, and forks
 
-- [ ] GEN-001 Implement commit operation from writable Materialization.
-- [ ] GEN-002 Require valid current writer fence.
-- [ ] GEN-003 Compare expected Workspace head before commit.
-- [ ] GEN-004 Reject stale/conflicting head commit.
-- [ ] GEN-005 Create new immutable WorkspaceGeneration transactionally.
-- [ ] GEN-006 Advance Workspace head atomically.
-- [ ] GEN-007 Record initiating principal/Run/Execution provenance.
-- [ ] GEN-008 Record parent generation.
+- [x] GEN-001 Implement commit operation from writable Materialization. (`ports.GenerationCommitter` and the PostgreSQL adapter publish a trusted, prepared manifest with audit/outbox; [metadata commit boundary](docs/database-development.md#generation-commit-boundary). Snapshot capture/verification orchestration and HTTP/idempotency wiring remain pending.)
+- [x] GEN-002 Require valid current writer fence. (Revalidated under transaction locks, including immediately before commit.)
+- [x] GEN-003 Compare expected Workspace head before commit.
+- [x] GEN-004 Reject stale/conflicting head commit. (PostgreSQL integration tests include competing commits; serialization conflicts propagate for caller reconciliation.)
+- [x] GEN-005 Create new immutable WorkspaceGeneration transactionally.
+- [x] GEN-006 Advance Workspace head atomically. (Generation, head, audit and outbox share one serializable transaction; injected failure proves rollback.)
+- [ ] GEN-007 Record initiating principal/Run/Execution provenance. (Principal and optional Execution are persisted by GEN-001; Run provenance remains pending.)
+- [x] GEN-008 Record parent generation. (The successfully compared previous head is the parent.)
 - [ ] GEN-009 Record exact component snapshot/checkpoint refs.
 - [ ] GEN-010 Mark Materialization clean relative to committed head where possible.
 - [ ] SNP-001 Implement provider-native Workspace snapshot coordination across components.
