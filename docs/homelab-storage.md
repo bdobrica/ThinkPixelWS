@@ -101,3 +101,44 @@ For each worker address above, inspect `findmnt /mnt/ssd`, `findmnt /mnt/usb`,
 `findmnt -t nfs,nfs4,cifs,zfs` using authorized direct SSH access.
 A missing executable or matching mount can make these inspection commands exit
 nonzero; it is not an instruction to install software or modify a filesystem.
+
+## Sandbox deletion survival test
+
+`TestSandboxDeletionPreservesHotStorage` is an opt-in live test. It allocates a
+64Mi PVC through the WS provider, creates an `agents.x-k8s.io/v1beta1` Sandbox
+using the existing claim, writes an uncommitted marker, then deletes the Sandbox
+with foreground propagation. It waits for the Sandbox and all its Pods to vanish,
+checks the original PVC UID, PV name and provider handle, and reads the marker
+through a new read-only Pod. The test creates a unique `ws-rec004-*` namespace;
+cleanup deletes only that namespace and waits for its disappearance. A terminated
+test process may leave that named namespace for operator cleanup.
+
+Passed on 2026-09-26 in 80.76 seconds, including namespace cleanup, with
+`local-path` on `k3spi-02`. The original PVC UID
+`6ca62117-560d-4cec-b3ab-2ba652c72b6e` and PV binding survived foreground
+Sandbox deletion, and the read-only verifier returned the original marker.
+
+Run against the homelab without copying credentials off the control plane:
+
+```sh
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go test -c \
+  -o /tmp/ws-rec004.test ./internal/adapters/workingstorage/kubernetes
+scp /tmp/ws-rec004.test k3spi:/tmp/ws-rec004.test
+ssh k3spi 'THINKPIXELWS_TEST_KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  THINKPIXELWS_TEST_STORAGE_CLASS=local-path \
+  THINKPIXELWS_TEST_STORAGE_IMAGE=docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0 \
+  /tmp/ws-rec004.test -test.run=^TestSandboxDeletionPreservesHotStorage$ \
+  -test.v -test.timeout=8m'
+```
+
+For another cluster, set these three environment variables and run the named Go
+test locally. The credential must permit namespace creation/deletion, PVC and Pod
+operations, Pod logs, API discovery and Sandbox operations. The selected image
+must provide `sh`, `cat`, `sync` and `sleep`. Normal unit tests skip this test when
+`THINKPIXELWS_TEST_KUBECONFIG` is unset.
+
+This uses the real Sandbox controller and default container runtime, not Kata or
+the AR service. It does not qualify AG grants, PostgreSQL persistence, preparation
+from a generation, lease renewal, writable replacement execution, or node/disk
+loss. AR must preserve the claim and its namespace during execution cleanup; see
+[storage lifetime](contracts/providers.md#storage-lifetime-after-sandbox-deletion).

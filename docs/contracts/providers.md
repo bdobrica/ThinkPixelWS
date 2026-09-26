@@ -59,6 +59,29 @@ type ProfileProvider interface {
 - Plaintext data keys are zeroizable, process-local, never logged/serialized, and have a bounded lifetime. Wrapped keys carry provider/key/version references only.
 - Profile handles and profile encryption domains are separate from ordinary Workspace content.
 
+## Storage lifetime after sandbox deletion
+
+WS creates hot-storage PVCs independently, without Kubernetes owner references.
+AR consumes the existing claim by name; it must not adopt the claim, add a
+Sandbox/Pod owner reference, put it in Sandbox `volumeClaimTemplates`, or include
+it in execution cleanup. WS rejects claims with owner references rather than
+silently taking ownership. The namespace containing durable claims must also
+outlive execution: deleting a per-sandbox namespace deletes its PVCs regardless
+of owner references.
+
+Deleting a Sandbox or its Pods does not request WS release, change Materialization
+identity, or discard uncommitted files. Hot storage remains until an explicitly
+authorized WS release under the rules below. A StorageClass `Delete` reclaim
+policy applies when the PVC is deleted, not when its consuming Pod disappears;
+changing it to `Retain` is not required for sandbox survival.
+
+Survival is not renewed execution authority. Lease expiry/fencing still applies,
+and replacement execution requires fresh authorization and attachment checks.
+Node-local storage survives sandbox deletion only while its node/disk remains
+available. The opt-in [homelab test](../homelab-storage.md#sandbox-deletion-survival-test)
+checks the real Sandbox controller, PVC/PV identity and file readback; AR service
+integration and writable replacement execution remain separate work.
+
 ## Materialization restart recovery
 
 The internal `materialization.Recoverer.Recover` takes an authorized tenant-scoped

@@ -175,6 +175,9 @@ func (p *Provider) Allocate(ctx context.Context, m domain.Materialization) (port
 		return ports.WorkingStorage{}, err
 	}
 	mode := corev1.PersistentVolumeFilesystem
+	// WS owns this claim independently of execution. Never add a Sandbox/Pod
+	// owner reference: Kubernetes garbage collection must not turn sandbox loss
+	// into loss of uncommitted working data. Only explicit WS release deletes it.
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: pvcName(m), Namespace: p.client.Namespace, Labels: ownership(m), Annotations: map[string]string{"thinkpixel.io/target": p.config.TargetID, "thinkpixel.io/storage-profile": p.config.Profile}},
 		Spec: corev1.PersistentVolumeClaimSpec{
