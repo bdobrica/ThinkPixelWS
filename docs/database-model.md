@@ -38,6 +38,11 @@ shared SQL transaction for future atomic business/audit/outbox operations.
 Lifecycle transitions compare tenant, current state, expected version, and update
 time atomically, incrementing the version on success. RELEASED, FAILED, and FENCED
 are terminal; stale or mismatched updates return a conflict.
+Multiple read-only Materializations may share a Workspace, completed generation,
+and target, including while a writable lease exists. Each has its own identity,
+binding, and lifecycle; creating, activating, or releasing readers neither consumes
+a writer slot nor advances the Workspace fence. These metadata operations require
+caller authorization; provider-side read-only mount enforcement remains provider work.
 A `read-write` request or lifecycle transition grants no writer lease or execution
 authority. Migration `000024` adds an optional, opaque provider handle bounded to
 4096 characters. The repository binds it once during PREPARING using tenant and
