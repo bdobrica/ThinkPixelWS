@@ -19,6 +19,8 @@ var (
 // Create accepts only the initial REQUESTED state. Callers must authorize the
 // operation and use a transaction to couple the mutation with audit/outbox.
 // Lifecycle mutations do not acquire a writer lease or enforce its fence.
+// CHECKPOINTING alone grants no authority: authoritative checkpoint/commit
+// mutations must also use MaterializationWriterGuard in the same transaction.
 // Multiple read-only realizations of the same Workspace generation/target may
 // coexist, including alongside a writable lease, without allocating a fence.
 type MaterializationRepository interface {

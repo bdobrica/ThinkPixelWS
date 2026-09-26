@@ -90,8 +90,24 @@ any nonterminal writer to FENCED, incrementing its state version. Terminal histo
 is preserved. Expiry alone does not advance the fence. Cleanup is explicit or
 performed by acquisition, not a background scheduler; renewal rejects an expired
 lease even before cleanup. HTTP/AG renewal wiring and scheduling remain separate;
-checkpoint commit fencing remains MAT-009. Provider provisioning/AR attachment, checkpoint/dirty
-status, and execution references also remain subsequent work.
+provider provisioning/AR attachment, checkpoint/dirty status, and execution
+references also remain subsequent work.
+
+The transaction-only Materialization writer guard validates checkpoint and commit
+fencing under Workspace, lease, and Materialization locks retained through the
+protected metadata mutation. It requires matching tenant/Workspace/Materialization/lease
+identity, equal supplied/lease/Workspace fences, an unreleased lease unexpired at
+database wall time after locking, and an ACTIVE or CHECKPOINTING writable
+Materialization. Commit validation additionally requires serializable isolation
+and a matching non-null expected head. Errors require caller rollback; the guard
+does not mutate lifecycle or perform expiry cleanup.
+
+A successful check is not a reusable authorization grant. Callers authorize under
+AG governance, check before provider work, and revalidate in a fresh transaction
+after provider work immediately before publishing authoritative metadata. Database
+locks must not span provider IO. Provider checkpoint implementation, generation
+creation/head advancement, audit/outbox integration, and HTTP wiring remain
+CHK/GEN work; lifecycle state changes alone do not publish authoritative state.
 
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.
 - Generation numbers and event sequence numbers are allocated while locking the Workspace row.
