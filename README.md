@@ -16,7 +16,7 @@ ThinkPixelWS keeps runtime authority, source-system credentials, model access, a
 
 The normative Phase 0 architecture, security model, ADRs, provider contracts, OpenAPI 3.1 contract, and machine-readable Workspace/portable-snapshot schemas are complete. The engineering foundation is complete and durable Workspace implementation is underway; [`TODO.md`](TODO.md) tracks remaining implementation work.
 
-An OIDC verifier adapter now validates RS256 bearer JWTs against a configured issuer and audience, including expiry and signing-key rotation. Verified claims can be mapped to a tenant and principal using explicitly configured claim names. Authorization and HTTP API integration remain pending; see the [authentication boundary](docs/security.md#authentication-and-authorization).
+An OIDC verifier adapter validates RS256 bearer JWTs against a configured issuer and audience, including expiry and signing-key rotation. Verified claims map to a tenant and principal using explicitly configured claim names. A typed administrative authorization port and fail-closed enforcement helper are available; the policy adapter and HTTP API integration remain pending. See the [authentication boundary](docs/security.md#authentication-and-authorization).
 
 For current cross-repository priority, follow the ThinkPixel platform [development alignment](https://github.com/bdobrica/ThinkPixel/blob/main/docs/development/ALIGNMENT.md). The immediate WS objective is the smallest durable Workspace path needed to prove that work survives disposable AR compute: materialize work, modify/checkpoint or commit it, destroy the sandbox, attach or recreate fresh compute, and continue with the same logical Workspace without expanding Run authority.
 

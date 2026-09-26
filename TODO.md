@@ -148,7 +148,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] DB-001 Add migration framework and tenant schema. — completed 2026-09-04, commit d9ac1b5, evidence: `./scripts/check-migrations.sh`; PostgreSQL 17.6 migration up/down/up and tenant constraint/ownership checks; `GOTOOLCHAIN=go1.25.14 make verify`; `git diff --check`
 - [x] IAM-001 Implement OIDC/JWT issuer/audience/algorithm/expiry validation. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/adapters/oidc ./internal/ports`; `go vet ./internal/adapters/oidc ./internal/ports`; `go build ./internal/adapters/oidc ./internal/ports`; `go mod verify`; `GOTOOLCHAIN=go1.25.14 go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 -test ./internal/adapters/oidc`; `docs/security.md` (RS256 adapter scope and dependency review)
 - [x] IAM-002 Implement claim-to-tenant/principal mapping. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/adapters/oidc ./internal/ports`; `go vet ./internal/security ./internal/adapters/oidc ./internal/ports`; `git diff --check`; `docs/security.md` (mapping configuration and scope)
-- [ ] IAM-003 Implement Workspace administrative authorization port.
+- [x] IAM-003 Implement Workspace administrative authorization port. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/ports`; `go vet ./internal/security ./internal/ports`; `git diff --check`; `docs/security.md` (administrative scope and fail-closed enforcement)
 - [ ] IAM-004 Implement OPA/Rego reference authorization adapter.
 - [ ] IAM-005 Implement explicit safe development auth mode.
 - [ ] API-001 Implement create Workspace.
