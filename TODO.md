@@ -249,7 +249,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] GEN-006 Advance Workspace head atomically. (Generation, head, audit and outbox share one serializable transaction; injected failure proves rollback.)
 - [x] GEN-007 Record initiating principal/Run/Execution provenance. (Trusted commit input persists principal and optional UUIDv7 Run/Execution IDs on the immutable generation; PostgreSQL readback preserves them.)
 - [x] GEN-008 Record parent generation. (The successfully compared previous head is the parent.)
-- [ ] GEN-009 Record exact component snapshot/checkpoint refs.
+- [x] GEN-009 Record exact component snapshot/checkpoint refs. (Trusted commit input records complete, scoped component references on the immutable generation; portable snapshot digests and provider-local checkpoint handles round-trip through PostgreSQL. Capture/verification remains orchestration work.)
 - [ ] GEN-010 Mark Materialization clean relative to committed head where possible.
 - [ ] SNP-001 Implement provider-native Workspace snapshot coordination across components.
 - [ ] SNP-002 Define behavior if only subset of component snapshots succeeds.

@@ -32,8 +32,17 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 		TenantID: in.Writer.TenantID, WorkspaceID: in.Writer.WorkspaceID,
 		ID: in.GenerationID, Number: in.ExpectedHead + 1, ParentNumber: &in.ExpectedHead,
 		ManifestDigest: in.ManifestDigest, Durability: in.Durability,
-		CreatedByPrincipal: in.Principal, CreatedByRun: in.RunID, CreatedByExecution: in.ExecutionID,
+		ComponentReferences: in.ComponentReferences,
+		CreatedByPrincipal:  in.Principal, CreatedByRun: in.RunID, CreatedByExecution: in.ExecutionID,
 	}).WorkspaceGeneration(time.Now().UTC())
+	if err != nil {
+		return zero, err
+	}
+	// Persist an explicit empty set for an empty Workspace.
+	if g.ComponentReferences == nil {
+		g.ComponentReferences = []domain.GenerationComponentReference{}
+	}
+	references, err := json.Marshal(g.ComponentReferences)
 	if err != nil {
 		return zero, err
 	}
@@ -57,12 +66,21 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 	if version != in.MaterializationVersion {
 		return zero, ports.ErrMaterializationWriterConflict
 	}
+	var components, matched int
+	if err := tx.QueryRowContext(ctx, `SELECT count(*),count(*) FILTER (WHERE component_id IN
+ (SELECT (value->>'componentId')::uuid FROM jsonb_array_elements($3::jsonb)))
+ FROM thinkpixelws.workspace_components WHERE tenant_id=$1 AND workspace_id=$2`, g.TenantID, g.WorkspaceID, string(references)).Scan(&components, &matched); err != nil {
+		return zero, err
+	}
+	if components != len(g.ComponentReferences) || matched != components {
+		return zero, errors.New("generation references must cover exactly the Workspace components")
+	}
 	if err := tx.QueryRowContext(ctx, `SELECT clock_timestamp()`).Scan(&g.CreatedAt); err != nil {
 		return zero, err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO thinkpixelws.workspace_generations
- (tenant_id,workspace_id,generation,generation_id,parent_generation,state,manifest_digest,durability,created_by_principal,created_by_execution_id,created_by_run_id,created_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, g.TenantID, g.WorkspaceID, g.Number, g.ID, g.ParentNumber, g.State, g.ManifestDigest.String(), g.Durability, g.CreatedByPrincipal, g.CreatedByExecution, g.CreatedByRun, g.CreatedAt)
+ (tenant_id,workspace_id,generation,generation_id,parent_generation,state,manifest_digest,durability,created_by_principal,created_by_execution_id,created_by_run_id,created_at,component_references)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)`, g.TenantID, g.WorkspaceID, g.Number, g.ID, g.ParentNumber, g.State, g.ManifestDigest.String(), g.Durability, g.CreatedByPrincipal, g.CreatedByExecution, g.CreatedByRun, g.CreatedAt, string(references))
 	if err != nil {
 		return zero, err
 	}

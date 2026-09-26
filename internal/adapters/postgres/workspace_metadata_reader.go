@@ -77,7 +77,7 @@ func scanComponent(row rowScanner) (ports.ComponentRecord, error) {
 	return c, nil
 }
 
-const generationReadSQL = `SELECT tenant_id,workspace_id,generation_id,generation,parent_generation,state,manifest_digest,durability,created_by_principal,created_by_execution_id,created_by_run_id,created_at
+const generationReadSQL = `SELECT tenant_id,workspace_id,generation_id,generation,parent_generation,state,manifest_digest,durability,created_by_principal,created_by_execution_id,created_by_run_id,created_at,component_references
  FROM thinkpixelws.workspace_generations WHERE tenant_id=$1 AND workspace_id=$2`
 
 func (r WorkspaceReader) GetGeneration(ctx context.Context, tenant, workspace uuid.UUID, number int) (domain.WorkspaceGeneration, error) {
@@ -108,9 +108,15 @@ func (r WorkspaceReader) ListGenerations(ctx context.Context, tenant, workspace 
 func scanGeneration(row rowScanner) (domain.WorkspaceGeneration, error) {
 	var g domain.WorkspaceGeneration
 	var digest string
-	err := row.Scan(&g.TenantID, &g.WorkspaceID, &g.ID, &g.Number, &g.ParentNumber, &g.State, &digest, &g.Durability, &g.CreatedByPrincipal, &g.CreatedByExecution, &g.CreatedByRun, &g.CreatedAt)
+	var references []byte
+	err := row.Scan(&g.TenantID, &g.WorkspaceID, &g.ID, &g.Number, &g.ParentNumber, &g.State, &digest, &g.Durability, &g.CreatedByPrincipal, &g.CreatedByExecution, &g.CreatedByRun, &g.CreatedAt, &references)
 	if err != nil {
 		return g, err
+	}
+	if references != nil {
+		if err := json.Unmarshal(references, &g.ComponentReferences); err != nil {
+			return g, err
+		}
 	}
 	g.ManifestDigest, err = shared.ParseSHA256Digest(digest)
 	if err != nil {

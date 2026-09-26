@@ -7,7 +7,8 @@
 for publishing prepared content from an ACTIVE or CHECKPOINTING writable
 Materialization. The caller supplies tenant/Workspace/Materialization identity,
 lease and fence, expected head, captured Materialization state version, stable
-generation ID, manifest digest, durability, principal and optional Run/Execution IDs.
+generation ID, manifest digest, exact component references, durability, principal
+and optional Run/Execution IDs.
 Provenance comes from trusted governance/runtime context and conveys no authority;
 WS does not query AG or AR databases to validate these identities. Existing
 generations retain absent Run provenance rather than inventing attribution.
@@ -16,12 +17,23 @@ its parent, advances the head and writes linked audit/outbox records in one
 serializable transaction. It checks the writer both before mutation and just
 before database commit. Failed publication rolls back all four records.
 
+Migration `000028` stores component references on the immutable generation row.
+Each new commit must cover exactly the Workspace's registered component IDs;
+foreign, duplicate or missing IDs are rejected. A `portable-snapshot` reference
+uses a snapshot manifest SHA-256 digest and component ID. A `provider-checkpoint`
+reference uses provider, target and an opaque immutable checkpoint handle, never
+a mutable PVC or reusable snapshot name. Portable generations cannot depend on
+provider checkpoints. The trusted caller verifies that these references match
+the captured manifest and content; SQL does not perform provider IO. Get/list
+readback preserves the exact references. Historical generations retain `NULL`
+(unknown references); new empty Workspaces record an explicit empty array.
+
 This is an internal metadata operation. Trusted WS orchestration must authorize
 the caller under AG governance and capture, persist and verify a complete
 immutable manifest and its content before calling it. Provider IO must happen
 outside the transaction; a digest supplied by an agent or a mutable PVC reference
 is not evidence of a completed capture. The adapter does not inspect blob content
-or implement capture, component snapshot references, HTTP
+or implement capture, HTTP
 idempotency or the public commit endpoint. It preserves Materialization state and
 base generation and does not claim that later filesystem writes are clean.
 

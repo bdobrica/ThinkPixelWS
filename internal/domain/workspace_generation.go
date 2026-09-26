@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"math"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -25,33 +26,35 @@ const (
 )
 
 // WorkspaceGeneration identifies one immutable, committed logical state of a
-// Workspace. Component and provenance records are introduced separately.
+// Workspace, including its captured component references and creator attribution.
 type WorkspaceGeneration struct {
-	TenantID           uuid.UUID
-	WorkspaceID        uuid.UUID
-	ID                 uuid.UUID
-	Number             uint64
-	ParentNumber       *uint64
-	State              WorkspaceGenerationState
-	ManifestDigest     shared.SHA256Digest
-	Durability         GenerationDurability
-	CreatedByPrincipal string
-	CreatedByRun       *uuid.UUID
-	CreatedByExecution *uuid.UUID
-	CreatedAt          time.Time
+	TenantID            uuid.UUID
+	WorkspaceID         uuid.UUID
+	ID                  uuid.UUID
+	Number              uint64
+	ParentNumber        *uint64
+	State               WorkspaceGenerationState
+	ManifestDigest      shared.SHA256Digest
+	Durability          GenerationDurability
+	CreatedByPrincipal  string
+	CreatedByRun        *uuid.UUID
+	CreatedByExecution  *uuid.UUID
+	ComponentReferences []GenerationComponentReference
+	CreatedAt           time.Time
 }
 
 type NewWorkspaceGeneration struct {
-	TenantID           uuid.UUID
-	WorkspaceID        uuid.UUID
-	ID                 uuid.UUID
-	Number             uint64
-	ParentNumber       *uint64
-	ManifestDigest     shared.SHA256Digest
-	Durability         GenerationDurability
-	CreatedByPrincipal string
-	CreatedByRun       *uuid.UUID
-	CreatedByExecution *uuid.UUID
+	TenantID            uuid.UUID
+	WorkspaceID         uuid.UUID
+	ID                  uuid.UUID
+	Number              uint64
+	ParentNumber        *uint64
+	ManifestDigest      shared.SHA256Digest
+	Durability          GenerationDurability
+	CreatedByPrincipal  string
+	CreatedByRun        *uuid.UUID
+	CreatedByExecution  *uuid.UUID
+	ComponentReferences []GenerationComponentReference
 }
 
 func (input NewWorkspaceGeneration) WorkspaceGeneration(now time.Time) (WorkspaceGeneration, error) {
@@ -60,9 +63,10 @@ func (input NewWorkspaceGeneration) WorkspaceGeneration(now time.Time) (Workspac
 		Number: input.Number, ParentNumber: input.ParentNumber,
 		State: WorkspaceGenerationCompleted, ManifestDigest: input.ManifestDigest,
 		Durability: input.Durability, CreatedByPrincipal: input.CreatedByPrincipal,
-		CreatedByRun:       cloneUUID(input.CreatedByRun),
-		CreatedByExecution: cloneUUID(input.CreatedByExecution),
-		CreatedAt:          now.UTC(),
+		CreatedByRun:        cloneUUID(input.CreatedByRun),
+		CreatedByExecution:  cloneUUID(input.CreatedByExecution),
+		CreatedAt:           now.UTC(),
+		ComponentReferences: slices.Clone(input.ComponentReferences),
 	}
 	if err := generation.Validate(); err != nil {
 		return WorkspaceGeneration{}, err
@@ -104,5 +108,5 @@ func (generation WorkspaceGeneration) Validate() error {
 	if generation.CreatedAt.IsZero() {
 		return errors.New("workspace generation creation time is required")
 	}
-	return nil
+	return validateGenerationComponentReferences(generation.ComponentReferences, generation.Durability)
 }

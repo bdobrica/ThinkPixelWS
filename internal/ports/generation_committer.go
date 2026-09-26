@@ -21,11 +21,13 @@ type GenerationCommit struct {
 	MaterializationVersion uint64
 	GenerationID           uuid.UUID
 	ManifestDigest         shared.SHA256Digest
-	Durability             domain.GenerationDurability
-	Principal              string
-	RunID                  *uuid.UUID
-	ExecutionID            *uuid.UUID
-	RequestID, TraceID     string
+	// ComponentReferences covers every component in the captured Workspace.
+	ComponentReferences []domain.GenerationComponentReference
+	Durability          domain.GenerationDurability
+	Principal           string
+	RunID               *uuid.UUID
+	ExecutionID         *uuid.UUID
+	RequestID, TraceID  string
 }
 
 // GenerationCommitter publishes prepared content from a current writable

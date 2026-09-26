@@ -179,7 +179,9 @@ func TestGenerationCommitRollbackPostgres(t *testing.T) {
  CREATE TRIGGER test_commit_failure BEFORE INSERT ON thinkpixelws.outbox_messages FOR EACH ROW EXECUTE FUNCTION thinkpixelws.test_commit_failure()`); err != nil {
 				t.Fatal(err)
 			}
-			_, err := (GenerationCommitter{DB: db}).Commit(t.Context(), generationCommitInput(w))
+			in := generationCommitInput(w)
+			in.ComponentReferences = commitComponentReferences(t, db, w)
+			_, err := (GenerationCommitter{DB: db}).Commit(t.Context(), in)
 			if err == nil || (expire && !errors.Is(err, ports.ErrMaterializationWriterConflict)) {
 				t.Fatalf("failure not propagated: %v", err)
 			}
