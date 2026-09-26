@@ -251,8 +251,33 @@ never from Workspace contents or API callers. Credentials stay in WS client
 transports. The namespace scopes provider resource requests; Kubernetes RBAC must
 limit the service account independently, and AG authorization is still required.
 
-The adapter supplies core-v1 and discovery clients. Construction does not contact
-the cluster or create resources. Service startup/provider wiring and capability
-checks will be added with the Kubernetes provider tasks; this configuration is
-not yet exposed through the process JSON/environment loader. No PVC, snapshot,
-or sandbox lifecycle operation is implemented by this client setup.
+The client constructor supplies core-v1 and discovery clients without contacting
+the cluster or creating resources. `NewProvider(ctx, client, ProviderConfig)`
+constructs the Kubernetes `WorkingStorageProvider` for one operator-configured
+`TargetID`, explicit `StorageClass`, and positive `Capacity` (for example `1Gi`).
+It checks the namespaced core PVC API at construction and before each operation.
+This is API availability discovery, not a check of RBAC permissions or CSI
+snapshot/clone support.
+
+The provider allocates an empty filesystem PVC with `ReadWriteOnce`, reports its
+storage phase, and requests deletion of that PVC. It uses deterministic names,
+tenant/Workspace/Materialization ownership metadata, and handles tied to PVC UIDs.
+Allocation retries reject ownership or specification conflicts. Release checks
+ownership and uses UID/resource-version preconditions; absent storage is already
+released, while terminating storage is still reported as releasing. PVCs have no
+sandbox owner reference, so sandbox deletion does not trigger their garbage
+collection. Actual volume deletion follows the configured StorageClass reclaim
+policy and Kubernetes finalizers.
+
+These are storage primitives: a bound PVC does not mean Workspace content has
+been restored or a Materialization is READY. `ReadWriteOnce` does not enforce the
+WS writer lease or read-only execution. The caller must authorize operations,
+load tenant-scoped records, persist the returned opaque handle, and detach
+execution before release. No credentials are included in handles. The provider
+has no database or portable-store access.
+
+Process configuration/wiring, profile selection, component layout, restore and
+Materialization lifecycle orchestration, AR attachment, and CSI capability
+qualification remain pending in TODO.md. This adapter is not yet exposed through
+the process JSON/environment loader. Tests use local HTTP API fixtures; no live
+cluster or CSI behavior has been qualified.
