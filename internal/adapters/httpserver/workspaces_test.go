@@ -25,7 +25,7 @@ func (s *creationStore) CreateWorkspace(_ context.Context, in ports.WorkspaceCre
 func TestCreateWorkspaceHTTP(t *testing.T) {
 	cfg, token := developmentConfig(t)
 	store := &creationStore{}
-	api, err := NewWorkspaceAPI(workspace.Creator{Store: store, Clock: clockadapter.System{}})
+	api, err := NewWorkspaceAPI(workspace.Creator{Store: store, Clock: clockadapter.System{}}, workspace.Reader{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestCreateWorkspaceHTTP(t *testing.T) {
 
 func TestCreateWorkspaceDeniedBeforePersistence(t *testing.T) {
 	store := &creationStore{}
-	api, err := NewWorkspaceAPI(workspace.Creator{Store: store, Clock: clockadapter.System{}})
+	api, err := NewWorkspaceAPI(workspace.Creator{Store: store, Clock: clockadapter.System{}}, workspace.Reader{})
 	if err != nil {
 		t.Fatal(err)
 	}

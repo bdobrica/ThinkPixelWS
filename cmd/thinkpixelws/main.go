@@ -3,9 +3,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,6 +21,7 @@ import (
 	"github.com/bdobrica/ThinkPixelWS/internal/adapters/postgres"
 	"github.com/bdobrica/ThinkPixelWS/internal/app/workspace"
 	"github.com/bdobrica/ThinkPixelWS/internal/config"
+	"github.com/bdobrica/ThinkPixelWS/internal/security"
 	"github.com/bdobrica/ThinkPixelWS/internal/telemetry"
 	_ "github.com/lib/pq"
 )
@@ -54,7 +57,11 @@ func run() error {
 		}
 		defer db.Close()
 		readiness = databaseReadiness{db}
-		api, err = httpserver.NewWorkspaceAPI(workspace.Creator{Store: postgres.WorkspaceCreator{DB: db}, Clock: clockadapter.System{}})
+		cursors, cursorErr := cursorCodec(cfg.CursorKeyFile)
+		if cursorErr != nil {
+			return cursorErr
+		}
+		api, err = httpserver.NewWorkspaceAPI(workspace.Creator{Store: postgres.WorkspaceCreator{DB: db}, Clock: clockadapter.System{}}, workspace.Reader{Store: postgres.WorkspaceReader{DB: db}, Cursors: cursors, Clock: clockadapter.System{}})
 		if err != nil {
 			return fmt.Errorf("initialize Workspace API: %w", err)
 		}
@@ -129,3 +136,25 @@ func openDatabase(path string) (*sql.DB, error) {
 type databaseReadiness struct{ db *sql.DB }
 
 func (r databaseReadiness) Ready(ctx context.Context) error { return r.db.PingContext(ctx) }
+
+// An optional external key keeps cursors valid across restarts/replicas.
+// Without it, cursors deliberately last only for this process lifetime.
+func cursorCodec(path string) (*security.CursorCodec, error) {
+	key := make([]byte, 32)
+	if path == "" {
+		if _, err := rand.Read(key); err != nil {
+			return nil, errors.New("generate cursor key failed")
+		}
+	} else {
+		file, err := os.Open(path)
+		if err != nil {
+			return nil, errors.New("read cursor key failed")
+		}
+		defer file.Close()
+		key, err = io.ReadAll(io.LimitReader(file, 33))
+		if err != nil || len(key) != 32 {
+			return nil, errors.New("cursor key file must contain exactly 32 raw bytes")
+		}
+	}
+	return security.NewCursorCodec(key, clockadapter.System{})
+}

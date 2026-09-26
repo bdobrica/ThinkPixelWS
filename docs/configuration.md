@@ -17,6 +17,7 @@ startup.
 | JSON field | Environment variable | Default |
 |---|---|---|
 | `database_url_file` | `THINKPIXELWS_DATABASE_URL_FILE` | empty (Workspace API disabled) |
+| `cursor_key_file` | `THINKPIXELWS_CURSOR_KEY_FILE` | empty (random process-local key) |
 | `auth.mode` | `THINKPIXELWS_AUTH_MODE` | `disabled` |
 | `auth.tenant_id` | `THINKPIXELWS_AUTH_TENANT_ID` | empty |
 | `auth.principal` | `THINKPIXELWS_AUTH_PRINCIPAL` | empty |
@@ -101,8 +102,8 @@ identity. Handlers receive `httpserver.IdentityFromContext` and must call
 `httpserver.AuthorizeWorkspace` with the operation and tenant-resolved target.
 All other actions remain denied, including materialization and profile access.
 A development-mode warning is logged at startup. Health/readiness and metrics
-remain unauthenticated. Workspace creation additionally requires PostgreSQL
-configuration below; list/get are not implemented yet.
+remain unauthenticated. Workspace create/list/get additionally require PostgreSQL
+configuration below.
 
 `disabled` disables development auth; it does not enable anonymous API access.
 Configured API handlers return 503 until authentication is configured. There is
@@ -112,7 +113,7 @@ no production OIDC HTTP mode yet. Unknown modes and identity/token settings with
 
 ## Workspace API and PostgreSQL
 
-`POST /v1/workspaces` is available when `THINKPIXELWS_DATABASE_URL_FILE` points
+Workspace create/list/get APIs are available when `THINKPIXELWS_DATABASE_URL_FILE` points
 to a file containing the PostgreSQL connection URL. Keep this file outside the
 repository and Workspace content, readable only by the service operator. The
 service reads it at startup, verifies connectivity, and uses PostgreSQL for
@@ -177,10 +178,33 @@ a changed request with the same key returns 409. Workspace, audit, outbox, and
 idempotency records commit atomically. Records have a 24-hour retention floor;
 automatic expiry cleanup is not implemented, so retained keys keep replaying.
 
+Read current metadata with `GET /v1/workspaces/{workspace_id}` and enumerate it
+with `GET /v1/workspaces?limit=100`, using the same bearer token. Get returns 404
+for an absent Workspace or one in another tenant. It includes `headGeneration`
+only when a committed head exists.
+
+List defaults to 100 records, accepts 1–500, and orders by ascending Workspace
+UUID. Pass a returned `nextCursor` as the `cursor` query parameter until it is
+absent. Cursors are authenticated, bound to the tenant/principal/list operation,
+and expire after 15 minutes (410); malformed, modified, or wrong-scope cursors
+return 400. Pagination is a live keyset traversal, not a snapshot: deletion does
+not shift offsets, and new rows after the boundary may appear on later pages.
+Every request checks list permission and view permission for each candidate.
+Denied items are omitted, so a page can be short or empty while still having a
+`nextCursor`. Development policy allows all metadata within the configured tenant.
+
+By default, startup generates a random cursor signing key; a restart invalidates
+outstanding cursors. To preserve cursors across restarts or replicas, set
+`THINKPIXELWS_CURSOR_KEY_FILE` to the same private external file containing
+exactly 32 cryptographically random raw bytes. Keep it outside this repository
+and Workspace content. For example, provision it once with `openssl rand -out
+/path/to/private/cursor-key 32` under `umask 077`. A configured unreadable or
+incorrectly sized key aborts startup; rotating the key invalidates old cursors.
+
 The focused PostgreSQL integration test creates and drops an isolated database.
 Point it at a disposable local instance using a URL for an account with CREATEDB:
 
 ```sh
 THINKPIXELWS_TEST_DATABASE_URL='postgres://USER:PASSWORD@127.0.0.1:5432/postgres?sslmode=disable' \
-  go test -race ./internal/adapters/httpserver -run TestCreateWorkspacePostgres -v
+  go test -race ./internal/adapters/httpserver -run 'Test(CreateWorkspace|ReadWorkspaces)Postgres' -v
 ```

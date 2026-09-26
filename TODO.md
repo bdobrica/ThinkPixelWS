@@ -152,7 +152,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [ ] IAM-004 Implement OPA/Rego reference authorization adapter.
 - [x] IAM-005 Implement explicit safe development auth mode. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/config ./internal/adapters/httpserver`; `go vet ./internal/security ./internal/config ./internal/adapters/httpserver ./cmd/thinkpixelws`; `git diff --check`; `docs/configuration.md` (opt-in local setup and limitations)
 - [x] API-001 Implement create Workspace. — completed 2026-09-26, commit: this change, evidence: focused race tests including `TestCreateWorkspacePostgres` against PostgreSQL; live process HTTP 201 and identical replay after restart; focused `go vet`; service build; vulnerability and license checks.
-- [ ] API-002 Implement list/get Workspace with tenant-safe pagination.
+- [x] API-002 Implement list/get Workspace with tenant-safe pagination. — completed 2026-09-26, commit: this change, evidence: focused race tests including `TestReadWorkspacesPostgres` (live HTTP, tenant isolation, keyset pagination, policy, cursor tampering/scope/expiry, persisted head); `TestCursorKeyRestart`; live service create/list/get and cursor continuation after restart; focused vet and service build.
 - [ ] API-003 Implement component/generation read APIs.
 - [ ] DB-024 Add real PostgreSQL empty-migration tests.
 - [ ] DB-025 Add tenant-isolation tests.
@@ -545,3 +545,5 @@ Date | TODO IDs | Commit | Verification evidence | Notes/deviations
 YYYY-MM-DD | `ARC-...` | `<sha>` | `<commands/artifacts>` | `<notes>`
 
 2026-09-26 | `API-001` | this change | PostgreSQL HTTP integration race tests; live HTTP create/restart replay; focused vet/build; vulnerability and license checks | Creates metadata in CREATING; list/get and materialization remain separate tasks.
+
+2026-09-26 | `API-002` | this change | PostgreSQL HTTP read/pagination tests; live service cursor continuation after restart; focused race/vet/build | Tenant-scoped metadata reads; 15-minute authenticated cursors; content APIs remain separate.

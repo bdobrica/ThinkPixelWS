@@ -39,6 +39,7 @@ var (
 // Config contains process-level configuration. It does not contain secret
 // values; credentials are represented only by secret locators.
 type Config struct {
+	CursorKeyFile    string                     `json:"cursor_key_file"`
 	DatabaseURLFile  string                     `json:"database_url_file"`
 	Auth             AuthConfig                 `json:"auth"`
 	HTTP             HTTPConfig                 `json:"http"`
@@ -110,6 +111,7 @@ func LoadFromEnvironment() (Config, error) {
 }
 
 type fileConfig struct {
+	CursorKeyFile   *string     `json:"cursor_key_file"`
 	DatabaseURLFile *string     `json:"database_url_file"`
 	Auth            *AuthConfig `json:"auth"`
 	HTTP            *struct {
@@ -160,6 +162,9 @@ func load(path string, lookup lookupEnv) (Config, error) {
 }
 
 func applyFile(cfg *Config, file fileConfig) error {
+	if file.CursorKeyFile != nil {
+		cfg.CursorKeyFile = *file.CursorKeyFile
+	}
 	if file.DatabaseURLFile != nil {
 		cfg.DatabaseURLFile = *file.DatabaseURLFile
 	}
@@ -210,6 +215,7 @@ func setDuration(value *string, target *time.Duration) error {
 func applyEnvironment(cfg *Config, lookup lookupEnv) error {
 	for key, target := range map[string]*string{
 		"THINKPIXELWS_DATABASE_URL_FILE": &cfg.DatabaseURLFile,
+		"THINKPIXELWS_CURSOR_KEY_FILE":   &cfg.CursorKeyFile,
 		"THINKPIXELWS_AUTH_MODE":         &cfg.Auth.Mode,
 		"THINKPIXELWS_AUTH_TENANT_ID":    &cfg.Auth.TenantID,
 		"THINKPIXELWS_AUTH_PRINCIPAL":    &cfg.Auth.Principal,

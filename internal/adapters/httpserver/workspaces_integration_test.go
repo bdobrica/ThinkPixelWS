@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -22,7 +21,8 @@ import (
 
 // The supplied PostgreSQL account needs CREATEDB. Every run creates and drops
 // its own database; migrations never run against the supplied database itself.
-func TestCreateWorkspacePostgres(t *testing.T) {
+func workspaceTestDatabase(t *testing.T) *sql.DB {
+	t.Helper()
 	dsn := os.Getenv("THINKPIXELWS_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("set THINKPIXELWS_TEST_DATABASE_URL for isolated PostgreSQL integration")
@@ -50,7 +50,7 @@ func TestCreateWorkspacePostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() { db.Close() })
 	migrations, err := filepath.Glob("../../../migrations/*.up.sql")
 	if err != nil || len(migrations) == 0 {
 		t.Fatal("migrations not found")
@@ -64,11 +64,16 @@ func TestCreateWorkspacePostgres(t *testing.T) {
 			t.Fatalf("%s: %v", path, err)
 		}
 	}
+	return db
+}
+
+func TestCreateWorkspacePostgres(t *testing.T) {
+	db := workspaceTestDatabase(t)
 	cfg, token := developmentConfig(t)
-	if _, err = db.ExecContext(t.Context(), `INSERT INTO thinkpixelws.tenants (tenant_id,lifecycle_state) VALUES ($1,'ACTIVE')`, cfg.Auth.TenantID); err != nil {
+	if _, err := db.ExecContext(t.Context(), `INSERT INTO thinkpixelws.tenants (tenant_id,lifecycle_state) VALUES ($1,'ACTIVE')`, cfg.Auth.TenantID); err != nil {
 		t.Fatal(err)
 	}
-	api, err := NewWorkspaceAPI(workspace.Creator{Store: postgres.WorkspaceCreator{DB: db}, Clock: clockadapter.System{}})
+	api, err := NewWorkspaceAPI(workspace.Creator{Store: postgres.WorkspaceCreator{DB: db}, Clock: clockadapter.System{}}, workspace.Reader{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +174,7 @@ func TestCreateWorkspacePostgres(t *testing.T) {
 		otherCfg := cfg
 		otherCfg.Auth.TenantID = scope.tenant
 		otherCfg.Auth.Principal = scope.principal
-		otherAPI, e := NewWorkspaceAPI(creator)
+		otherAPI, e := NewWorkspaceAPI(creator, workspace.Reader{})
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -191,5 +196,5 @@ func TestCreateWorkspacePostgres(t *testing.T) {
 		t.Fatalf("minimal create: %d %s", emptyResidency.Code, emptyResidency.Body.String())
 	}
 	assertCounts(5)
-	t.Log(fmt.Sprintf("verified concurrent create/replay, normalized conflict, atomic rollback, and tenant/principal isolation in %s", name))
+	t.Log("verified concurrent create/replay, normalized conflict, atomic rollback, and tenant/principal isolation")
 }
