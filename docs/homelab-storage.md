@@ -30,6 +30,20 @@ Existing local-path claims include AG, AR, and monitoring data. Kata worker
 DaemonSets and the agent-sandbox controller are installed. This inspection did
 not run a sandbox or test storage persistence.
 
+## Current choice
+
+The operator confirmed on 2026-09-26 that simple local storage is sufficient for
+now. Use the existing `local-path` StorageClass for the homelab integration;
+installing or testing CSI is not a prerequisite for the next WS steps. The
+working-storage adapter uses the Kubernetes PVC API, preserving the option to
+select a CSI-backed StorageClass later without changing the provider-neutral
+port. CSI-specific capabilities will need separate validation when used.
+
+This choice accepts node-local durability: replacement execution must run where
+the volume resides, and recovery after loss of that node or disk is not promised.
+Requested PVC capacity must not be presented as an enforced filesystem quota.
+The service integration described below still needs implementation.
+
 ## Democratic-CSI assessment
 
 No driver was installed and no cluster resources, mounts, or disks were changed.
