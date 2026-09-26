@@ -125,12 +125,12 @@ func materializationInput() NewMaterialization {
 
 func TestMaterializationLifecycle(t *testing.T) {
 	edges := map[MaterializationState][]MaterializationState{
-		MaterializationRequested:     {MaterializationPreparing, MaterializationFailed},
-		MaterializationPreparing:     {MaterializationReady, MaterializationFailed},
-		MaterializationReady:         {MaterializationActive, MaterializationReleasing},
+		MaterializationRequested:     {MaterializationPreparing, MaterializationFailed, MaterializationFenced},
+		MaterializationPreparing:     {MaterializationReady, MaterializationFailed, MaterializationFenced},
+		MaterializationReady:         {MaterializationActive, MaterializationReleasing, MaterializationFenced},
 		MaterializationActive:        {MaterializationCheckpointing, MaterializationReleasing, MaterializationFenced},
 		MaterializationCheckpointing: {MaterializationActive, MaterializationFailed, MaterializationFenced},
-		MaterializationReleasing:     {MaterializationReleased, MaterializationFailed},
+		MaterializationReleasing:     {MaterializationReleased, MaterializationFailed, MaterializationFenced},
 	}
 	states := []MaterializationState{MaterializationRequested, MaterializationPreparing, MaterializationReady, MaterializationActive, MaterializationCheckpointing, MaterializationReleasing, MaterializationReleased, MaterializationFailed, MaterializationFenced, "UNKNOWN"}
 	original, err := materializationInput().Materialization(time.Now())

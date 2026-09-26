@@ -167,21 +167,22 @@ func (m Materialization) Bind(handle MaterializationHandle, expectedVersion uint
 }
 
 // CanTransitionTo describes lifecycle edges only, never permission to execute
-// or write. Released, failed, and fenced instances cannot be revived.
+// or write. Any nonterminal writer can be fenced when its lease expires, including
+// during preparation. Released, failed, and fenced instances cannot be revived.
 func (state MaterializationState) CanTransitionTo(next MaterializationState) bool {
 	switch state {
 	case MaterializationRequested:
-		return next == MaterializationPreparing || next == MaterializationFailed
+		return next == MaterializationPreparing || next == MaterializationFailed || next == MaterializationFenced
 	case MaterializationPreparing:
-		return next == MaterializationReady || next == MaterializationFailed
+		return next == MaterializationReady || next == MaterializationFailed || next == MaterializationFenced
 	case MaterializationReady:
-		return next == MaterializationActive || next == MaterializationReleasing
+		return next == MaterializationActive || next == MaterializationReleasing || next == MaterializationFenced
 	case MaterializationActive:
 		return next == MaterializationCheckpointing || next == MaterializationReleasing || next == MaterializationFenced
 	case MaterializationCheckpointing:
 		return next == MaterializationActive || next == MaterializationFailed || next == MaterializationFenced
 	case MaterializationReleasing:
-		return next == MaterializationReleased || next == MaterializationFailed
+		return next == MaterializationReleased || next == MaterializationFailed || next == MaterializationFenced
 	default:
 		return false
 	}

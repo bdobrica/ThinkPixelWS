@@ -73,14 +73,30 @@ writable REQUESTED/PREPARING/READY Materializations; callers must separately che
 Workspace eligibility and governed authorization. Database wall time after lock
 acquisition starts the 60-second lease. Conflicts and insert failures roll back the
 fence; results are returned only after commit. Released history does not occupy a
-slot. Expired but unreleased leases still block acquisition until MAT-008 implements
-retirement/renewal; checkpoint commit fencing remains MAT-009. Provider provisioning/AR attachment, checkpoint/dirty
+slot. Acquisition retires an expired slot and fences its nonterminal Materialization
+in the same transaction as the replacement lease and fence; any failure rolls all
+of these changes back. An expired Materialization cannot reacquire its own slot.
+
+Renewal locks the Workspace and lease/Materialization before checking database wall
+time, tenant, Materialization, lease ID, holder, current fence, and lifecycle.
+Only unreleased, unexpired REQUESTED/PREPARING/READY/ACTIVE/CHECKPOINTING writers
+can renew. It sets expiry to 60 seconds after server time without changing the
+fence or issuance time. Rejected renewals do not mutate metadata. Callers must
+reauthorize each renewal and schedule it at the 20-second interval (with jitter);
+holder references are not authority.
+
+The idempotent tenant/Workspace-scoped expiry operation records release and moves
+any nonterminal writer to FENCED, incrementing its state version. Terminal history
+is preserved. Expiry alone does not advance the fence. Cleanup is explicit or
+performed by acquisition, not a background scheduler; renewal rejects an expired
+lease even before cleanup. HTTP/AG renewal wiring and scheduling remain separate;
+checkpoint commit fencing remains MAT-009. Provider provisioning/AR attachment, checkpoint/dirty
 status, and execution references also remain subsequent work.
 
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.
 - Generation numbers and event sequence numbers are allocated while locking the Workspace row.
 - A trigger or revoked update/delete privileges reject mutation/deletion of completed generation, component-generation, and provenance rows.
-- Writer acquisition locks the Workspace, increments `writer_fence`, and inserts the only unexpired active writer lease. A partial unique index covers unreleased leases; expiry retirement remains pending.
+- Writer acquisition locks the Workspace, increments `writer_fence`, and inserts the only unexpired active writer lease. A partial unique index covers unreleased leases; expired slots are retired transactionally.
 - Commit locks Workspace and lease, validates expected head/fence/expiry, inserts the generation graph, advances head, and inserts audit/outbox records atomically.
 - State-changing operations update `state_version` with expected-version compare-and-swap.
 - Audit/outbox payloads contain identifiers and policy-safe metadata only.

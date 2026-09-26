@@ -119,14 +119,6 @@ func TestMaterializationLeaseAcquisitionPostgres(t *testing.T) {
  FROM thinkpixelws.materialization_leases WHERE tenant_id=$1 AND lease_id=$2`
 	_, err = db.ExecContext(ctx, insert, w.TenantID, winner.ID, uuid.Must(uuid.NewV7()))
 	assertMaterializationPGError(t, err, "23505")
-	// Until MAT-008 implements retirement, an expired slot fails closed too.
-	if _, err := db.ExecContext(ctx, `UPDATE thinkpixelws.materialization_leases SET issued_at=issued_at-interval '2 minutes', renewed_at=renewed_at-interval '2 minutes', expires_at=expires_at-interval '2 minutes' WHERE tenant_id=$1 AND lease_id=$2`, w.TenantID, winner.ID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := acquire(w.TenantID, m.ID, "execution"); !errors.Is(err, ports.ErrWritableLeaseConflict) {
-		t.Fatalf("expired slot: %v", err)
-	}
-	assertFence(1)
 	if _, err := db.ExecContext(ctx, `UPDATE thinkpixelws.materialization_leases SET released_at=clock_timestamp() WHERE tenant_id=$1 AND lease_id=$2`, w.TenantID, winner.ID); err != nil {
 		t.Fatal(err)
 	}

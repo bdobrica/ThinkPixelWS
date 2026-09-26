@@ -131,6 +131,10 @@ stateDiagram-v2
     CHECKPOINTING --> ACTIVE
     CHECKPOINTING --> FENCED: lease lost or replaced
     ACTIVE --> FENCED: lease lost or replaced
+    REQUESTED --> FENCED: lease expired
+    PREPARING --> FENCED: lease expired
+    READY --> FENCED: lease expired
+    RELEASING --> FENCED: lease expired
     READY --> RELEASING
     ACTIVE --> RELEASING
     RELEASING --> RELEASED
