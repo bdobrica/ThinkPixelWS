@@ -79,8 +79,10 @@ Survival is not renewed execution authority. Lease expiry/fencing still applies,
 and replacement execution requires fresh authorization and attachment checks.
 Node-local storage survives sandbox deletion only while its node/disk remains
 available. The opt-in [homelab test](../homelab-storage.md#sandbox-deletion-survival-test)
-checks the real Sandbox controller, PVC/PV identity and file readback; AR service
-integration and writable replacement execution remain separate work.
+checks the real Sandbox controller, PVC/PV identity and file readback. The
+[replacement test](../homelab-storage.md#replacement-sandbox-attachment-test) also
+checks writable continuation through the existing binding. AR service integration
+remains separate work.
 
 ## Materialization restart recovery
 
@@ -170,3 +172,26 @@ Pod PVC references identify claims by name and do not offer a UID precondition.
 Treat a changed UID as conflict, never silently adopt the replacement. Lifecycle,
 lease and provider checks are observations, not a distributed atomic attachment
 transaction. Revocation and stale execution termination remain runtime duties.
+
+## Replacement attachment to existing hot storage
+
+A replacement Sandbox uses the same READY/ACTIVE Materialization and resolves a
+fresh binding through the existing binding reader. There is no WS allocation,
+restore, release, or lifecycle reset for this handoff: restoring the base generation
+would overwrite uncommitted work. Missing/replaced storage and FENCED records
+remain errors; reattachment cannot revive an expired writer.
+
+The trusted runtime must first stop old execution and confirm all its consuming
+Pods have terminated and storage can be safely remounted. It then revalidates AG
+scope and the current writer lease/fence, resolves the binding, checks the PVC UID,
+and creates replacement execution referencing that existing claim. It must prevent
+concurrent attachment and PVC replacement throughout the handoff. These are runtime
+preconditions, not additional authority supplied by a binding. If the lease expires
+during recovery, stop and follow fenced recovery policy instead of reusing it.
+
+The live test demonstrates sequential attachment on a healthy cluster after normal
+foreground deletion; absence from the API after force deletion or loss of contact
+with a node is not proof that an old writer has stopped. Node-local storage pins
+replacement scheduling to the original storage node. Cross-node recovery after
+node/disk loss requires a compatible shared storage backend or restore to a new
+Materialization; it is not supplied by local-path attachment.

@@ -23,6 +23,18 @@ import (
 // agents.x-k8s.io/v1beta1 controller and a dynamically provisioned StorageClass.
 // It exercises storage lifetime, not AR/AG authorization or writer recovery.
 func TestSandboxDeletionPreservesHotStorage(t *testing.T) {
+	testSandboxStorage(t, false)
+}
+
+// TestReplacementSandboxReusesMaterialization exercises the trusted runtime's
+// storage handoff after graceful, confirmed deletion on a healthy cluster. The
+// isolated fixture has one writer at a time; it does not simulate AG or leases.
+func TestReplacementSandboxReusesMaterialization(t *testing.T) {
+	testSandboxStorage(t, true)
+}
+
+func testSandboxStorage(t *testing.T, replacement bool) {
+	t.Helper()
 	kubeconfig := os.Getenv("THINKPIXELWS_TEST_KUBECONFIG")
 	if kubeconfig == "" {
 		t.Skip("set THINKPIXELWS_TEST_KUBECONFIG to enable the live cluster test")
@@ -35,7 +47,11 @@ func TestSandboxDeletionPreservesHotStorage(t *testing.T) {
 	if image == "" {
 		t.Fatal("THINKPIXELWS_TEST_STORAGE_IMAGE must select a trusted image with sh, cat, sync and sleep")
 	}
-	namespace := "ws-rec004-" + uuid.NewString()
+	prefix := "ws-rec004-"
+	if replacement {
+		prefix = "ws-rec005-"
+	}
+	namespace := prefix + uuid.NewString()
 	client, err := New(Config{Kubeconfig: kubeconfig, Namespace: namespace})
 	if err != nil {
 		t.Fatal(err)
@@ -99,46 +115,66 @@ func TestSandboxDeletionPreservesHotStorage(t *testing.T) {
 		}},
 		Volumes: []corev1.Volume{{Name: "workspace", VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName(m)}}}},
 	}
-	sandbox := map[string]any{"apiVersion": "agents.x-k8s.io/v1beta1", "kind": "Sandbox", "metadata": map[string]any{"name": "writer", "namespace": namespace}, "spec": map[string]any{"podTemplate": map[string]any{"spec": podSpec}}}
-	body, err := json.Marshal(sandbox)
-	if err != nil {
-		t.Fatal(err)
-	}
 	path := "/apis/agents.x-k8s.io/v1beta1/namespaces/" + namespace + "/sandboxes"
-	raw, err := client.Discovery.RESTClient().Post().AbsPath(path).Body(body).DoRaw(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var created struct {
-		Metadata metav1.ObjectMeta `json:"metadata"`
-	}
-	if err := json.Unmarshal(raw, &created); err != nil {
-		t.Fatal(err)
-	}
-	var writer *corev1.Pod
-	err = wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
-		pods, err := client.Core.Pods(namespace).List(ctx, metav1.ListOptions{})
+	createSandbox := func(name string, spec corev1.PodSpec) (metav1.ObjectMeta, *corev1.Pod) {
+		t.Helper()
+		sandbox := map[string]any{"apiVersion": "agents.x-k8s.io/v1beta1", "kind": "Sandbox", "metadata": map[string]any{"name": name, "namespace": namespace}, "spec": map[string]any{"podTemplate": map[string]any{"spec": spec}}}
+		body, err := json.Marshal(sandbox)
 		if err != nil {
-			return false, err
+			t.Fatal(err)
 		}
-		for i := range pods.Items {
-			pod := &pods.Items[i]
-			for _, owner := range pod.OwnerReferences {
-				if owner.UID != created.Metadata.UID {
-					continue
-				}
-				for _, condition := range pod.Status.Conditions {
-					if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-						writer = pod.DeepCopy()
-						return true, nil
+		raw, err := client.Discovery.RESTClient().Post().AbsPath(path).Body(body).DoRaw(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var created struct {
+			Metadata metav1.ObjectMeta `json:"metadata"`
+		}
+		if err := json.Unmarshal(raw, &created); err != nil {
+			t.Fatal(err)
+		}
+		var writer *corev1.Pod
+		err = wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (bool, error) {
+			pods, err := client.Core.Pods(namespace).List(ctx, metav1.ListOptions{})
+			if err != nil {
+				return false, err
+			}
+			for i := range pods.Items {
+				pod := &pods.Items[i]
+				for _, owner := range pod.OwnerReferences {
+					if owner.UID != created.Metadata.UID {
+						continue
+					}
+					for _, condition := range pod.Status.Conditions {
+						if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+							writer = pod.DeepCopy()
+							return true, nil
+						}
 					}
 				}
 			}
+			return false, nil
+		})
+		if err != nil {
+			t.Fatalf("wait for sandbox %s writer: %v", name, err)
 		}
-		return false, nil
-	})
+		return created.Metadata, writer
+	}
+	created, writer := createSandbox("writer", podSpec)
+	// Synthetic preparation only: the first writer supplied the test contents.
+	// No restore, allocation or lifecycle reset is performed during handoff.
+	m, err = m.TransitionState(domain.MaterializationReady, m.StateVersion, time.Now())
 	if err != nil {
-		t.Fatalf("wait for sandbox writer: %v", err)
+		t.Fatal(err)
+	}
+	m, err = m.TransitionState(domain.MaterializationActive, m.StateVersion, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := m
+	initialBinding, err := p.Binding(ctx, m)
+	if err != nil {
+		t.Fatal(err)
 	}
 	claims := client.Core.PersistentVolumeClaims(namespace)
 	before, err := claims.Get(ctx, pvcName(m), metav1.GetOptions{})
@@ -148,9 +184,9 @@ func TestSandboxDeletionPreservesHotStorage(t *testing.T) {
 	if !p.owned(before, m) || before.Status.Phase != corev1.ClaimBound || before.Spec.VolumeName == "" {
 		t.Fatal("sandbox changed independent PVC ownership or volume is not bound")
 	}
-	t.Logf("sandbox UID=%s pod UID=%s node=%s PVC UID=%s PV=%s", created.Metadata.UID, writer.UID, writer.Spec.NodeName, before.UID, before.Spec.VolumeName)
+	t.Logf("sandbox UID=%s pod UID=%s node=%s PVC UID=%s PV=%s", created.UID, writer.UID, writer.Spec.NodeName, before.UID, before.Spec.VolumeName)
 	policy := metav1.DeletePropagationForeground
-	opts, err := json.Marshal(metav1.DeleteOptions{PropagationPolicy: &policy, Preconditions: &metav1.Preconditions{UID: &created.Metadata.UID}})
+	opts, err := json.Marshal(metav1.DeleteOptions{PropagationPolicy: &policy, Preconditions: &metav1.Preconditions{UID: &created.UID}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,6 +217,56 @@ func TestSandboxDeletionPreservesHotStorage(t *testing.T) {
 	status, err := p.Status(ctx, m)
 	if err != nil || status.Handle != allocated.Handle || status.Phase != ports.WorkingStorageBound {
 		t.Fatalf("storage after deletion: %+v %v", status, err)
+	}
+	if replacement {
+		binding, err := p.Binding(ctx, m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if binding.Handle != initialBinding.Handle || string(binding.Reference) != string(initialBinding.Reference) {
+			t.Fatal("sandbox deletion changed the binding")
+		}
+		var ref PVCBinding
+		if err := json.Unmarshal(binding.Reference, &ref); err != nil {
+			t.Fatal(err)
+		}
+		if binding.Kind != PVCBindingKind || binding.Handle != allocated.Handle || ref.Namespace != namespace || ref.ClaimName != before.Name || ref.ClaimUID != string(before.UID) || ref.ReadOnly || ref.MountPath != "/workspace" {
+			t.Fatalf("unexpected replacement binding: %+v", ref)
+		}
+		// The runtime must check the UID immediately before use and prevent claim
+		// replacement. This test exclusively owns its namespace and never deletes
+		// the PVC until cleanup; Kubernetes volume references alone cannot pin UID.
+		current, err := claims.Get(ctx, ref.ClaimName, metav1.GetOptions{})
+		if err != nil || current == nil || string(current.UID) != ref.ClaimUID || current.DeletionTimestamp != nil {
+			t.Fatalf("replacement claim identity changed: %v", err)
+		}
+		expected := marker + "\ncontinued-on-replacement"
+		podSpec.Containers[0].Command = []string{"sh", "-ec", fmt.Sprintf("test \"$(cat /workspace/continuation.txt)\" = '%s'; printf '%%s\n' 'continued-on-replacement' >> /workspace/continuation.txt; sync; cat /workspace/continuation.txt; touch /tmp/continued; exec sleep 3600", marker)}
+		podSpec.Containers[0].VolumeMounts[0].MountPath = ref.MountPath
+		podSpec.Containers[0].VolumeMounts[0].ReadOnly = ref.ReadOnly
+		podSpec.Containers[0].ReadinessProbe.Exec.Command = []string{"cat", "/tmp/continued"}
+		podSpec.Volumes[0].PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: ref.ClaimName, ReadOnly: ref.ReadOnly}
+		next, nextWriter := createSandbox("replacement", podSpec)
+		if next.UID == created.UID || nextWriter.UID == writer.UID {
+			t.Fatal("replacement did not create fresh execution identities")
+		}
+		output, err := client.Core.Pods(namespace).GetLogs(nextWriter.Name, &corev1.PodLogOptions{Container: "writer"}).DoRaw(ctx)
+		if err != nil || strings.TrimSpace(string(output)) != expected {
+			t.Fatalf("replacement failed to continue saved work: %v", err)
+		}
+		current, err = claims.Get(ctx, ref.ClaimName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if current.UID != before.UID || current.Spec.VolumeName != before.Spec.VolumeName || current.DeletionTimestamp != nil || !p.owned(current, m) {
+			t.Fatal("replacement changed hot storage identity/ownership")
+		}
+		again, err := p.Binding(ctx, m)
+		if err != nil || again.Handle != binding.Handle || again.Kind != binding.Kind || string(again.Reference) != string(binding.Reference) || m != original {
+			t.Fatalf("replacement changed Materialization binding: %v", err)
+		}
+		t.Logf("replacement sandbox UID=%s pod UID=%s node=%s reused PVC UID=%s PV=%s; original bytes read and extended", next.UID, nextWriter.UID, nextWriter.Spec.NodeName, current.UID, current.Spec.VolumeName)
+		return
 	}
 	// Mount only after confirmed deletion, read-only. This verifies bytes survived;
 	// it does not implement replacement writable execution (REC-005).

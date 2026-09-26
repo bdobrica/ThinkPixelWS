@@ -142,3 +142,31 @@ the AR service. It does not qualify AG grants, PostgreSQL persistence, preparati
 from a generation, lease renewal, writable replacement execution, or node/disk
 loss. AR must preserve the claim and its namespace during execution cleanup; see
 [storage lifetime](contracts/providers.md#storage-lifetime-after-sandbox-deletion).
+
+## Replacement sandbox attachment test
+
+`TestReplacementSandboxReusesMaterialization` extends the same isolated fixture
+with a writable replacement Sandbox. After normal foreground deletion and confirmed
+absence of the original Sandbox and its Pods, it resolves the ACTIVE Materialization's
+existing provider binding, checks the PVC UID, then creates fresh Sandbox/Pod
+identities using that claim. The replacement reads the original uncommitted marker,
+appends a continuation line, syncs and reports the combined contents. PVC UID, PV,
+opaque handle and binding remain unchanged, with no new allocation or restore.
+
+Passed on 2026-09-26 in 116.99 seconds including namespace cleanup, using
+`local-path` on `k3spi-02`. Both execution instances used PVC UID
+`3fb8a679-0dbd-443b-97b7-3a8f18ccb885` and its original PV. The deletion-only
+regression also passed in 84.06 seconds in the same run.
+
+Use the compilation and SSH commands above with `ws-rec005.test` as the binary
+name and `-test.run=^TestReplacementSandboxReusesMaterialization$`. The test uses
+a unique `ws-rec005-*` namespace and deletes it on completion. The image also
+needs `test` and `touch` (provided by the pinned BusyBox image).
+
+This exercises the existing WS provider binding and real Sandbox controller;
+no new production attachment API is introduced. Materialization metadata and
+preparation are synthetic, and the test owns the namespace exclusively to prevent
+overlapping writers or PVC replacement. It does not qualify AR/AG integration,
+PostgreSQL persistence, lease renewal/fencing, Kata, force deletion or node loss.
+Local-path schedules replacement compute on the existing volume's node. Production
+handoff must enforce the [replacement attachment preconditions](contracts/providers.md#replacement-attachment-to-existing-hot-storage).
