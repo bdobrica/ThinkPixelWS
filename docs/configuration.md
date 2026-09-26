@@ -306,3 +306,6 @@ Materialization lifecycle orchestration, AR attachment, and CSI capability
 qualification remain pending in TODO.md. This adapter is not yet exposed through
 the process JSON/environment loader. Tests use local HTTP API fixtures; no live
 cluster or CSI behavior has been qualified.
+
+For the inspected Raspberry Pi cluster and CSI backend assessment, see
+[homelab storage](homelab-storage.md).
