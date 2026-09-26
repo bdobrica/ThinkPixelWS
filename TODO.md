@@ -250,7 +250,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] GEN-007 Record initiating principal/Run/Execution provenance. (Trusted commit input persists principal and optional UUIDv7 Run/Execution IDs on the immutable generation; PostgreSQL readback preserves them.)
 - [x] GEN-008 Record parent generation. (The successfully compared previous head is the parent.)
 - [x] GEN-009 Record exact component snapshot/checkpoint refs. (Trusted commit input records complete, scoped component references on the immutable generation; portable snapshot digests and provider-local checkpoint handles round-trip through PostgreSQL. Capture/verification remains orchestration work.)
-- [ ] GEN-010 Mark Materialization clean relative to committed head where possible.
+- [x] GEN-010 Mark Materialization clean relative to committed head where possible. — opt-in trusted quiesced CHECKPOINTING commits atomically record the new generation with a state-version increment; unconfirmed commits, lifecycle transitions and expiry fencing clear the marker. Base generation is preserved. Focused PostgreSQL tests cover readback, stale versions, rollback and clearing. Actual write quiescence/capture orchestration and HTTP wiring remain pending.
 - [ ] SNP-001 Implement provider-native Workspace snapshot coordination across components.
 - [ ] SNP-002 Define behavior if only subset of component snapshots succeeds.
 - [ ] SNP-003 Prevent partially successful snapshot from becoming committed generation.

@@ -15,7 +15,8 @@ generations retain absent Run provenance rather than inventing attribution.
 The adapter creates the next immutable generation, records the previous head as
 its parent, advances the head and writes linked audit/outbox records in one
 serializable transaction. It checks the writer both before mutation and just
-before database commit. Failed publication rolls back all four records.
+before database commit. Failed publication rolls back all records, including
+any Materialization clean marker update.
 
 Migration `000028` stores component references on the immutable generation row.
 Each new commit must cover exactly the Workspace's registered component IDs;
@@ -35,7 +36,23 @@ outside the transaction; a digest supplied by an agent or a mutable PVC referenc
 is not evidence of a completed capture. The adapter does not inspect blob content
 or implement capture, HTTP
 idempotency or the public commit endpoint. It preserves Materialization state and
-base generation and does not claim that later filesystem writes are clean.
+base generation.
+
+Migration `000029` adds an optional `clean_generation` marker. Trusted orchestration
+may set `GenerationCommit.MarkClean` only after stopping all writes before capture
+and keeping them stopped through publication. The adapter additionally requires
+CHECKPOINTING and records the new generation atomically with publication. Neither
+the lifecycle label nor the lease proves storage quiescence. By default commits
+leave cleanliness unknown and clear any previous marker. Existing rows also remain
+unknown (`NULL` in PostgreSQL, zero in the domain model).
+
+Setting or clearing the marker increments the Materialization state version;
+reload it before a subsequent commit or lifecycle transition. Every lifecycle
+transition and lease-expiry fencing clears the marker. Orchestration must leave
+CHECKPOINTING successfully before resuming writes, including after an ambiguous
+commit result. A nonzero marker identifies the captured generation, not necessarily
+the current Workspace head, and is never authority to write or delete hot storage.
+Actual write quiescence/capture orchestration remains pending.
 
 The outbox event `workspace.thinkpixel.io/generation.committed.v1` uses the new
 generation ID as its aggregate, version/sequence 1, and payload schema

@@ -19,8 +19,13 @@ type GenerationCommit struct {
 	Writer                 MaterializationWriter
 	ExpectedHead           uint64
 	MaterializationVersion uint64
-	GenerationID           uuid.UUID
-	ManifestDigest         shared.SHA256Digest
+	// MarkClean asserts that trusted orchestration has stopped all writes before
+	// capture and will keep them stopped until it leaves CHECKPOINTING after
+	// publication. A lifecycle label or a valid lease alone does not prove this.
+	// False leaves cleanliness unknown, including after a previously clean commit.
+	MarkClean      bool
+	GenerationID   uuid.UUID
+	ManifestDigest shared.SHA256Digest
 	// ComponentReferences covers every component in the captured Workspace.
 	ComponentReferences []domain.GenerationComponentReference
 	Durability          domain.GenerationDurability
@@ -33,6 +38,9 @@ type GenerationCommit struct {
 // GenerationCommitter publishes prepared content from a current writable
 // Materialization. Generation, head, audit and outbox commit atomically. It
 // neither captures content nor changes the Materialization's base or lifecycle.
+// MarkClean records the new generation on a CHECKPOINTING Materialization in
+// that same transaction and increments its state version. Clearing an existing
+// marker also increments the version. Reload before the next lifecycle mutation.
 // A failed publication must not cause cleanup of content already referenced by
 // a generation. No automatic retry is promised after an ambiguous DB result;
 // reconcile the stable GenerationID before retrying at a higher layer.

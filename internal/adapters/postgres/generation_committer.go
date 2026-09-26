@@ -59,11 +59,17 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 		return zero, err
 	}
 	var version uint64
-	if err := tx.QueryRowContext(ctx, `SELECT state_version FROM thinkpixelws.materializations
- WHERE tenant_id=$1 AND workspace_id=$2 AND materialization_id=$3`, g.TenantID, g.WorkspaceID, in.Writer.MaterializationID).Scan(&version); err != nil {
+	var cleanGeneration uint64
+	var state domain.MaterializationState
+	if err := tx.QueryRowContext(ctx, `SELECT state_version,lifecycle_state,COALESCE(clean_generation,0) FROM thinkpixelws.materializations
+ WHERE tenant_id=$1 AND workspace_id=$2 AND materialization_id=$3`, g.TenantID, g.WorkspaceID, in.Writer.MaterializationID).Scan(&version, &state, &cleanGeneration); err != nil {
 		return zero, err
 	}
 	if version != in.MaterializationVersion {
+		return zero, ports.ErrMaterializationWriterConflict
+	}
+	if (in.MarkClean && state != domain.MaterializationCheckpointing) ||
+		((in.MarkClean || cleanGeneration != 0) && version == math.MaxInt64) {
 		return zero, ports.ErrMaterializationWriterConflict
 	}
 	var components, matched int
@@ -88,6 +94,18 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
  WHERE tenant_id=$1 AND workspace_id=$2`, g.TenantID, g.WorkspaceID, g.Number, g.CreatedAt)
 	if err != nil {
 		return zero, err
+	}
+	if in.MarkClean || cleanGeneration != 0 {
+		var clean any
+		if in.MarkClean {
+			clean = g.Number
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE thinkpixelws.materializations
+ SET clean_generation=$4,state_version=state_version+1,updated_at=GREATEST(updated_at,$5)
+ WHERE tenant_id=$1 AND workspace_id=$2 AND materialization_id=$3`, g.TenantID, g.WorkspaceID, in.Writer.MaterializationID, clean, g.CreatedAt)
+		if err != nil {
+			return zero, err
+		}
 	}
 	transactionID, err := uuid.NewV7()
 	if err != nil {

@@ -188,3 +188,33 @@ func TestMaterializationTransitionGuards(t *testing.T) {
 		t.Fatal("version overflow accepted")
 	}
 }
+
+func TestMaterializationCleanGeneration(t *testing.T) {
+	m, err := materializationInput().Materialization(time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Mode = MaterializationReadWrite
+	m.State = MaterializationCheckpointing
+	m.CleanGeneration = 2
+	if err := m.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for _, next := range []MaterializationState{MaterializationActive, MaterializationFailed, MaterializationFenced} {
+		got, err := m.TransitionState(next, m.StateVersion, m.UpdatedAt)
+		if err != nil || got.CleanGeneration != 0 || got.BaseGeneration != m.BaseGeneration {
+			t.Fatalf("transition: %+v %v", got, err)
+		}
+	}
+	for _, mutate := range []func(*Materialization){
+		func(m *Materialization) { m.State = MaterializationActive },
+		func(m *Materialization) { m.Mode = MaterializationReadOnly },
+		func(m *Materialization) { m.CleanGeneration = math.MaxInt64 + 1 },
+	} {
+		bad := m
+		mutate(&bad)
+		if err := bad.Validate(); err == nil {
+			t.Fatal("invalid clean marker accepted")
+		}
+	}
+}

@@ -60,14 +60,18 @@ type Materialization struct {
 	ID             uuid.UUID
 	WorkspaceID    uuid.UUID
 	BaseGeneration uint64
-	Provider       string
-	Target         MaterializationTarget
-	Handle         MaterializationHandle
-	Mode           MaterializationMode
-	State          MaterializationState
-	StateVersion   uint64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// CleanGeneration is zero when cleanliness is unknown. A nonzero value
+	// records a quiesced capture while CHECKPOINTING; it is not writer authority
+	// or proof of current Workspace head. Resume writes only after leaving that state.
+	CleanGeneration uint64
+	Provider        string
+	Target          MaterializationTarget
+	Handle          MaterializationHandle
+	Mode            MaterializationMode
+	State           MaterializationState
+	StateVersion    uint64
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type NewMaterialization struct {
@@ -94,6 +98,9 @@ func (input NewMaterialization) Materialization(now time.Time) (Materialization,
 }
 
 func (m Materialization) Validate() error {
+	if m.CleanGeneration != 0 && (m.CleanGeneration > math.MaxInt64 || m.Mode != MaterializationReadWrite || m.State != MaterializationCheckpointing) {
+		return errors.New("materialization clean generation requires a writable checkpointing materialization and valid generation")
+	}
 	if m.Handle != "" {
 		if err := m.Handle.Validate(); err != nil {
 			return err
@@ -207,6 +214,7 @@ func (m Materialization) TransitionState(next MaterializationState, expectedVers
 		return Materialization{}, errors.New("materialization transition time precedes last update")
 	}
 	m.State = next
+	m.CleanGeneration = 0
 	m.StateVersion++
 	m.UpdatedAt = now.UTC()
 	return m, nil

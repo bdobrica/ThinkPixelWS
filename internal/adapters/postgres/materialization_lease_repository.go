@@ -125,7 +125,7 @@ func expireWriter(ctx context.Context, tx *sql.Tx, tenantID, workspaceID uuid.UU
 	}
 	// Preserve terminal history; every live writer loses lifecycle eligibility.
 	_, err = tx.ExecContext(ctx, `UPDATE thinkpixelws.materializations
- SET lifecycle_state='FENCED',state_version=state_version+1,updated_at=GREATEST(updated_at,$3)
+ SET lifecycle_state='FENCED',clean_generation=NULL,state_version=state_version+1,updated_at=GREATEST(updated_at,$3)
  WHERE tenant_id=$1 AND materialization_id=$2
  AND lifecycle_state NOT IN ('FENCED','FAILED','RELEASED')`, tenantID, matID, now)
 	return err == nil, err

@@ -54,12 +54,12 @@ func (r *MaterializationRepository) Get(ctx context.Context, tenantID, id uuid.U
 	err := r.db.QueryRowContext(ctx, `
 SELECT tenant_id, materialization_id, workspace_id, base_generation, provider,
  target_id, target_region, target_storage_class, COALESCE(target_architecture,''),
- mode, lifecycle_state, state_version, created_at, updated_at, COALESCE(provider_handle,'')
+ mode, lifecycle_state, state_version, created_at, updated_at, COALESCE(provider_handle,''), COALESCE(clean_generation,0)
 FROM thinkpixelws.materializations
 WHERE tenant_id = $1 AND materialization_id = $2`, tenantID, id).Scan(
 		&m.TenantID, &m.ID, &m.WorkspaceID, &m.BaseGeneration, &m.Provider,
 		&m.Target.ID, &m.Target.Region, &m.Target.StorageClass, &m.Target.Architecture,
-		&m.Mode, &m.State, &m.StateVersion, &m.CreatedAt, &m.UpdatedAt, &m.Handle)
+		&m.Mode, &m.State, &m.StateVersion, &m.CreatedAt, &m.UpdatedAt, &m.Handle, &m.CleanGeneration)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Materialization{}, ports.ErrMaterializationNotFound
 	}
@@ -119,7 +119,7 @@ func (r *MaterializationRepository) TransitionState(ctx context.Context, tenantI
 	}
 	result, err := r.db.ExecContext(ctx, `
 UPDATE thinkpixelws.materializations
-SET lifecycle_state = $5, state_version = state_version + 1, updated_at = $6
+SET lifecycle_state = $5, clean_generation = NULL, state_version = state_version + 1, updated_at = $6
 WHERE tenant_id = $1 AND materialization_id = $2
   AND lifecycle_state = $3 AND state_version = $4 AND updated_at <= $6`,
 		tenantID, id, current, expectedVersion, next, transitionedAt.UTC())

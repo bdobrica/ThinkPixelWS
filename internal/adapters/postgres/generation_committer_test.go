@@ -171,6 +171,13 @@ func TestGenerationCommitRollbackPostgres(t *testing.T) {
 	for _, expire := range []bool{false, true} {
 		t.Run(map[bool]string{false: "outbox failure", true: "expiry during publication"}[expire], func(t *testing.T) {
 			db, _, _, _, w := writerGuardFixture(t)
+			if _, err := db.ExecContext(t.Context(), `UPDATE thinkpixelws.materializations SET lifecycle_state='CHECKPOINTING'`); err != nil {
+				t.Fatal(err)
+			}
+			before, err := NewMaterializationRepository(db).Get(t.Context(), w.TenantID, w.MaterializationID)
+			if err != nil {
+				t.Fatal(err)
+			}
 			body := `RAISE EXCEPTION 'injected outbox failure';`
 			if expire {
 				body = `UPDATE thinkpixelws.materialization_leases SET issued_at=issued_at-interval '2 minutes', renewed_at=renewed_at-interval '2 minutes', expires_at=expires_at-interval '2 minutes'; RETURN NEW;`
@@ -180,12 +187,17 @@ func TestGenerationCommitRollbackPostgres(t *testing.T) {
 				t.Fatal(err)
 			}
 			in := generationCommitInput(w)
+			in.MarkClean = true
 			in.ComponentReferences = commitComponentReferences(t, db, w)
-			_, err := (GenerationCommitter{DB: db}).Commit(t.Context(), in)
+			_, err = (GenerationCommitter{DB: db}).Commit(t.Context(), in)
 			if err == nil || (expire && !errors.Is(err, ports.ErrMaterializationWriterConflict)) {
 				t.Fatalf("failure not propagated: %v", err)
 			}
 			assertCommitCounts(t, db, 1, 1, 0)
+			after, err := NewMaterializationRepository(db).Get(t.Context(), w.TenantID, w.MaterializationID)
+			if err != nil || !reflect.DeepEqual(before, after) {
+				t.Fatalf("clean marker/version did not roll back: %+v %v", after, err)
+			}
 		})
 	}
 }
