@@ -46,7 +46,7 @@ or scope 409, and unavailable verification/provider observation 503.
 **Implementation status:** TAR-001 provides the wire contract, generated Go client
 and server interface, and client/server contract tests. The running WS service does
 not expose this operation yet. AG verification, persisted component scope, HTTP
-handle resolution and AR attachment remain to be wired. The existing internal
+handle resolution and AR service composition remain to be wired. The existing internal
 `materialization.BindingReader` supplies trusted storage-adapter instructions;
 it is not this public contract and must not be exposed directly as authorization.
 The contract tests use a fixture resolver, not a real AG or storage provider.
@@ -76,6 +76,38 @@ read-only volume/mount settings, and enforce exclusive writer attachment. These
 whole-PVC instructions do not enforce component subsets or mixed component modes.
 The application/provider tests exercise neutral-handle resolution and decoding;
 no live AR attachment or AG authorization is claimed by TAR-002.
+
+### KAS attachment adapter (TAR-003)
+
+ThinkPixelAR commit `b508aec` adds
+`internal/adapters/workspace/kubernetes.WSVolumeResolver`, which
+consumes the JSON encoding of the resolved `storagebinding.Binding`. Compose it
+with AR's existing `AttachedBlueprintResolver`. A trusted lookup receives the
+current AR attachment reservation and must independently verify AG authority,
+WS handle scope/expiry and writer lease/fence on every use. The running WS HTTP
+service does not supply that lookup yet; never substitute a permissive callback.
+
+The bridge requires the resolved PVC namespace/name/UID to match the already
+reserved Workspace volume, preserves the separate vendor-state PVC, and checks
+mount root and explicit access mode. AR then verifies live PVC UID, Bound/filesystem
+state, capacities, access mode and independently qualified storage properties
+before rendering existing claims into the KAS Sandbox. The current coding template
+rejects read-only bindings; it does not silently upgrade them. Neither resolution
+nor Sandbox creation allocates, owns or deletes WS storage. Claim replacement
+between validation and mount must be prevented by trusted cluster ownership because
+Pod volume references use names. RWO is not a writer fence.
+
+AR's focused adapter tests exercise WS descriptors through KAS Sandbox creation,
+replay without duplicate creation, and fail-closed verification on replay using
+local HTTP fixtures. They do not exercise live AG, a WS HTTP endpoint, a database
+reservation or the homelab. TAR-003 implements the attachment adapter composition;
+the authorized endpoint, durable reservation mapping and running service composition
+remain pending. Reproduce the adapter checks from the ThinkPixelAR checkout:
+
+```sh
+go test ./internal/adapters/workspace/kubernetes ./internal/adapters/sandbox/agentsandbox
+go vet ./internal/adapters/workspace/kubernetes ./internal/adapters/sandbox/agentsandbox
+```
 
 ## ThinkPixelAG execution grant
 
