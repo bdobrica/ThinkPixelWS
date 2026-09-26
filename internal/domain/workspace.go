@@ -24,6 +24,7 @@ var workspaceNamePattern = regexp.MustCompile(`^[a-z](?:[a-z0-9-]{0,61}[a-z0-9])
 var (
 	ErrInvalidWorkspaceStateTransition = errors.New("invalid workspace state transition")
 	ErrWorkspaceStateVersionConflict   = errors.New("workspace state version conflict")
+	ErrWorkspaceWriterFenceExhausted   = errors.New("workspace writer fence exhausted")
 )
 
 type WorkspaceState string
@@ -130,6 +131,9 @@ func (workspace Workspace) Validate() error {
 	}
 	if !workspace.State.valid() || workspace.StateVersion < 1 || workspace.StateVersion > math.MaxInt64 {
 		return errors.New("workspace state is invalid")
+	}
+	if workspace.WriterFence > math.MaxInt64 {
+		return errors.New("workspace writer fence exceeds supported range")
 	}
 	if !workspace.Classification.valid() {
 		return errors.New("workspace classification is invalid")

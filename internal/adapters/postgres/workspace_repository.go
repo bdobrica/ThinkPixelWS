@@ -12,6 +12,7 @@ import (
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/bdobrica/ThinkPixelWS/internal/ports"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type rowScanner interface {
@@ -117,6 +118,32 @@ WHERE tenant_id = $1
 		return ports.ErrWorkspaceStateConflict
 	}
 	return nil
+}
+
+// AdvanceWriterFence uses PostgreSQL's row lock to serialize increments, including
+// concurrent callers. With a transaction-backed repository the lock and increment
+// remain part of that transaction. Fence changes do not change lifecycle version.
+func (repository *WorkspaceRepository) AdvanceWriterFence(ctx context.Context, tenantID, workspaceID uuid.UUID) (uint64, error) {
+	if tenantID == uuid.Nil || workspaceID == uuid.Nil {
+		return 0, errors.New("tenant and workspace IDs are required")
+	}
+	var fence uint64
+	err := repository.db.QueryRowContext(ctx, `
+UPDATE thinkpixelws.workspaces
+SET writer_fence = writer_fence + 1
+WHERE tenant_id = $1 AND workspace_id = $2
+RETURNING writer_fence`, tenantID, workspaceID).Scan(&fence)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ports.ErrWorkspaceNotFound
+	}
+	var pgError *pq.Error
+	if errors.As(err, &pgError) && pgError.Code == "22003" {
+		return 0, domain.ErrWorkspaceWriterFenceExhausted
+	}
+	if err != nil {
+		return 0, fmt.Errorf("advance workspace writer fence: %w", err)
+	}
+	return fence, nil
 }
 
 func scanWorkspace(row rowScanner) (domain.Workspace, error) {

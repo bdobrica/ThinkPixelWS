@@ -80,3 +80,7 @@ func (transactionRepositoriesStub) CompleteIdempotencyRecord(context.Context, uu
 func (transactionRepositoriesStub) EnqueueOutboxMessage(context.Context, uuid.UUID, domain.OutboxMessage) error {
 	return nil
 }
+
+func (transactionRepositoriesStub) AdvanceWriterFence(context.Context, uuid.UUID, uuid.UUID) (uint64, error) {
+	return 1, nil
+}

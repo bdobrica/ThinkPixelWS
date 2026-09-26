@@ -52,9 +52,14 @@ tenant, Workspace, and writable Materialization, preventing read-only references
 The domain constructor uses the ADR-0002 60-second duration; its renewal interval
 constant is 20 seconds. Timestamps must be ordered, and release may follow expiry.
 Rolling back `000025` discards leases but preserves Materializations and generations.
-This schema/domain does not acquire a lease or grant authority. Workspace fence
-allocation, current-writer uniqueness, renewal/expiry operations, and commit fencing
-remain MAT-005/006/008/009. Provider provisioning/AR attachment, checkpoint/dirty
+The Workspace repository atomically increments the existing `writer_fence` under
+its row lock and returns the new token. Each Workspace starts at zero; committed
+increments produce distinct increasing tokens through PostgreSQL's maximum bigint.
+Exhaustion fails without wrapping. Allocation preserves lifecycle state/version and
+timestamps. Lease acquisition must use a transaction-backed repository and insert
+the lease in that same transaction; a rolled-back token must never be published.
+This primitive does not acquire a lease or grant authority. Current-writer
+uniqueness, renewal/expiry operations, and commit fencing remain MAT-006/008/009. Provider provisioning/AR attachment, checkpoint/dirty
 status, and execution references also remain subsequent work.
 
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.
