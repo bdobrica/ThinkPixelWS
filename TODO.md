@@ -316,8 +316,8 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [ ] TAG-008 Handle AG grant expiry/revocation.
 - [ ] TAG-009 Stop lease renewal after authority expiry where applicable.
 - [ ] TAG-010 Ensure expired authority cannot commit new generation.
-- [x] TAR-001 Implement AR WorkspaceBinding API/client contract. OpenAPI resolution operation, scoped non-authorizing binding models, generated Go client/server interface, and wire round-trip/validation tests are implemented. Live grant verification, component-scope enforcement, handle resolution, and service/AR wiring remain pending.
-- [ ] TAR-002 Return provider-neutral Materialization handle usable by AR adapter.
+- [x] TAR-001 Implement AR WorkspaceBinding API/client contract. OpenAPI resolution operation, scoped non-authorizing binding models, generated Go client/server interface, and wire round-trip/validation tests are implemented. Live grant verification, component-scope enforcement, and service/AR wiring remain pending.
+- [x] TAR-002 Return provider-neutral Materialization handle usable by AR adapter. BindingReader returns an opaque WS reference and resolves it against current tenant/target/state and provider identity; public storagebinding types let AR decode adapter instructions without importing WS internals. HTTP/AG authorization and AR attachment wiring remain pending.
 - [ ] TAR-003 Integrate KAS/Kubernetes volume attachment flow with AR.
 - [ ] TAR-004 Verify AR Session close does not delete Workspace.
 - [ ] TAR-005 Verify AR Sandbox deletion does not delete Workspace.

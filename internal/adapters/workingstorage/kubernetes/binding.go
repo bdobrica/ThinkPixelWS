@@ -4,23 +4,18 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/bdobrica/ThinkPixelWS/api/storagebinding"
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/bdobrica/ThinkPixelWS/internal/ports"
 	corev1 "k8s.io/api/core/v1"
 )
 
-const PVCBindingKind = "kubernetes-pvc-v1"
+const PVCBindingKind = storagebinding.PVCBindingKind
 
 // PVCBinding is consumed by AR's Kubernetes adapter, not untrusted execution.
 // UID must be rechecked before use: Kubernetes Pod PVC references use names and
 // cannot pin a UID. ReadOnly applies to both the PVC volume source and every mount.
-type PVCBinding struct {
-	Namespace string `json:"namespace"`
-	ClaimName string `json:"claimName"`
-	ClaimUID  string `json:"claimUid"`
-	MountPath string `json:"mountPath"`
-	ReadOnly  bool   `json:"readOnly"`
-}
+type PVCBinding = storagebinding.PVCBinding
 
 var _ ports.WorkingStorageBindingProvider = (*Provider)(nil)
 
@@ -45,5 +40,5 @@ func (p *Provider) Binding(ctx context.Context, m domain.Materialization) (ports
 	if err != nil {
 		return ports.WorkingStorageBinding{}, err
 	}
-	return ports.WorkingStorageBinding{Handle: m.Handle, Kind: PVCBindingKind, Reference: reference}, nil
+	return ports.WorkingStorageBinding{Handle: string(m.Handle), Kind: PVCBindingKind, Reference: reference}, nil
 }

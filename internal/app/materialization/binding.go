@@ -13,6 +13,8 @@ import (
 // Binding carries stable WS identity and versioned storage instructions for AR.
 // It is not permission to attach, nor evidence that a writer lease is current.
 type Binding struct {
+	// Handle is a provider-neutral WS reference for the trusted AR adapter.
+	Handle            string                      `json:"handle"`
 	TenantID          uuid.UUID                   `json:"tenantId"`
 	WorkspaceID       uuid.UUID                   `json:"workspaceId"`
 	Generation        uint64                      `json:"generation"`
@@ -66,8 +68,8 @@ func (r BindingReader) Binding(ctx context.Context, tenant, id uuid.UUID) (Bindi
 	if observationErr != nil {
 		return Binding{}, observationErr
 	}
-	if storage.Handle != m.Handle || storage.Kind == "" || !json.Valid(storage.Reference) {
+	if storage.Handle != string(m.Handle) || storage.Kind == "" || !json.Valid(storage.Reference) {
 		return Binding{}, ports.ErrWorkingStorageConflict
 	}
-	return Binding{TenantID: m.TenantID, WorkspaceID: m.WorkspaceID, Generation: m.BaseGeneration, MaterializationID: m.ID, StateVersion: m.StateVersion, TargetID: m.Target.ID, AccessMode: m.Mode, Storage: storage}, nil
+	return Binding{Handle: bindingHandle(m), TenantID: m.TenantID, WorkspaceID: m.WorkspaceID, Generation: m.BaseGeneration, MaterializationID: m.ID, StateVersion: m.StateVersion, TargetID: m.Target.ID, AccessMode: m.Mode, Storage: storage}, nil
 }

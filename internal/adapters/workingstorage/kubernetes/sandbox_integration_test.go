@@ -230,7 +230,7 @@ func testSandboxStorage(t *testing.T, replacement bool) {
 		if err := json.Unmarshal(binding.Reference, &ref); err != nil {
 			t.Fatal(err)
 		}
-		if binding.Kind != PVCBindingKind || binding.Handle != allocated.Handle || ref.Namespace != namespace || ref.ClaimName != before.Name || ref.ClaimUID != string(before.UID) || ref.ReadOnly || ref.MountPath != "/workspace" {
+		if binding.Kind != PVCBindingKind || binding.Handle != string(allocated.Handle) || ref.Namespace != namespace || ref.ClaimName != before.Name || ref.ClaimUID != string(before.UID) || ref.ReadOnly || ref.MountPath != "/workspace" {
 			t.Fatalf("unexpected replacement binding: %+v", ref)
 		}
 		// The runtime must check the UID immediately before use and prevent claim

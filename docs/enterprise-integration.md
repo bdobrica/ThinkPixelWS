@@ -45,11 +45,37 @@ or scope 409, and unavailable verification/provider observation 503.
 
 **Implementation status:** TAR-001 provides the wire contract, generated Go client
 and server interface, and client/server contract tests. The running WS service does
-not expose this operation yet. AG verification, persisted component scope, public
+not expose this operation yet. AG verification, persisted component scope, HTTP
 handle resolution and AR attachment remain to be wired. The existing internal
 `materialization.BindingReader` supplies trusted storage-adapter instructions;
 it is not this public contract and must not be exposed directly as authorization.
 The contract tests use a fixture resolver, not a real AG or storage provider.
+
+TAR-002 adds a provider-neutral `Binding.Handle` to the internal binding reader.
+Trusted integration code calls `BindingReader.ResolveHandle(ctx, tenant, materializationID,
+target, audience, handle)` with independently authorized tenant/Materialization/component
+scope (the ID comes from that authorization, not the handle) and runtime-configured target and audience (`thinkpixelar`). It reloads the
+record and observes the provider, rejects changed records and replacement PVCs,
+and returns the current adapter instructions. It does not allocate, attach, renew,
+or release storage. Handles survive service restart without an in-memory registry;
+a state-version change (including READY to ACTIVE) requires a fresh handle.
+
+The `ws-mat-v1` reference binds tenant, Materialization, Workspace, base generation,
+state version, target, access mode, provider identity and AR audience. Consumers
+keep the entire value opaque. It contains no PVC name, path, credentials or grant.
+Its digest is an identity check, **not a signature or authorization**; constructing
+or possessing a handle must never bypass authorization. Binding expiry and current
+grant/lease checks remain separate requirements, including at use time.
+
+AR adapters can import `github.com/bdobrica/ThinkPixelWS/api/storagebinding`
+without importing WS internals. Decode the resolved `Storage` as `Binding`, reject
+unsupported `Kind` values, and decode `kubernetes-pvc-v1` references as `PVCBinding`.
+That reference pins namespace, claim name and UID, `/workspace`, and read-only
+intent. AR must check the live UID before use, enforce the sandbox namespace and
+read-only volume/mount settings, and enforce exclusive writer attachment. These
+whole-PVC instructions do not enforce component subsets or mixed component modes.
+The application/provider tests exercise neutral-handle resolution and decoding;
+no live AR attachment or AG authorization is claimed by TAR-002.
 
 ## ThinkPixelAG execution grant
 
