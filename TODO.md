@@ -178,7 +178,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] K8S-001 Implement Kubernetes client/configuration adapter.
 - [x] K8S-002 Implement Kubernetes WorkingStorageProvider. — hot-storage allocation/status/release primitives; profile selection and Materialization orchestration remain subsequent tasks.
 - [x] K8S-003 Create PVC/hot storage according to configured profile. — operator-selected named filesystem profile with explicit class/capacity and RWO or RWOP access; process wiring remains pending.
-- [ ] K8S-004 Implement deterministic component layout.
+- [x] K8S-004 Implement deterministic component layout. — mounted-volume helper creates canonical component directories in stable name order, preserves contents on retry, and rejects scope/path conflicts; focused filesystem/domain race tests. Invocation during prepare remains K8S-005.
 - [ ] K8S-005 Implement Materialization prepare.
 - [ ] K8S-006 Implement Materialization status.
 - [ ] K8S-007 Implement attach/binding result for AR.

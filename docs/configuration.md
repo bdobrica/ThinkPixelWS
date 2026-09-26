@@ -301,7 +301,22 @@ load tenant-scoped records, persist the returned opaque handle, and detach
 execution before release. No credentials are included in handles. The provider
 has no database or portable-store access.
 
-Process configuration/wiring, component layout, restore and
+`internal/adapters/workingstorage/layout.Prepare` creates component directories
+in a pre-opened filesystem volume root that will be mounted at `/workspace`.
+Each component uses its validated name as the volume-relative directory and
+retains its canonical `/workspace/<name>` execution path. Results are ordered by
+name regardless of input order. All component kinds use the same layout.
+Retries preserve existing directories and contents; duplicate names/IDs,
+cross-tenant/Workspace records, noncanonical paths, files, and symlinks at component
+roots are rejected. Unselected directories are left untouched. New directories
+use mode `0755` subject to the process umask; existing permissions are preserved.
+The caller supplies trusted generation membership and holds the mounted storage
+exclusively with execution detached. The helper creates directories only: it
+does not restore content, enforce leases, or make a Materialization READY.
+It supports both local-path and CSI filesystem volumes. Tests exercise a local
+filesystem, including reopening storage and retrying with existing content.
+
+Process configuration/wiring, invoking the layout helper during prepare, restore and
 Materialization lifecycle orchestration, AR attachment, and CSI capability
 qualification remain pending in TODO.md. This adapter is not yet exposed through
 the process JSON/environment loader. Tests use local HTTP API fixtures; no live
