@@ -16,18 +16,27 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-// ProviderConfig is operator-selected placement for a single storage target.
-// StorageClass must be explicit; no cluster default or caller-supplied PVC spec
-// is used. Profile selection and scheduling policy belong above this adapter.
-type ProviderConfig struct {
-	TargetID     string
+// StorageProfile describes operator-approved filesystem hot storage. AccessMode
+// defaults to ReadWriteOnce; ReadWriteOncePod requires a supporting CSI driver.
+// Neither setting replaces WS writer fencing or read-only attachment controls.
+type StorageProfile struct {
 	StorageClass string
 	Capacity     string
+	AccessMode   corev1.PersistentVolumeAccessMode
+}
+
+// ProviderConfig selects one named profile for a single target. Profiles are
+// trusted operator configuration, never Workspace content or caller PVC specs.
+type ProviderConfig struct {
+	TargetID string
+	Profile  string
+	Profiles map[string]StorageProfile
 }
 
 type Provider struct {
 	client   Client
 	config   ProviderConfig
+	profile  StorageProfile
 	capacity resource.Quantity
 }
 
@@ -37,14 +46,32 @@ func NewProvider(ctx context.Context, client *Client, cfg ProviderConfig) (*Prov
 	if client == nil || client.Core == nil || client.Discovery == nil || len(validation.IsDNS1123Label(client.Namespace)) != 0 {
 		return nil, errors.New("invalid kubernetes provider client")
 	}
-	if strings.TrimSpace(cfg.TargetID) != cfg.TargetID || cfg.TargetID == "" || len(cfg.TargetID) > 256 || len(validation.IsDNS1123Subdomain(cfg.StorageClass)) != 0 {
+	if strings.TrimSpace(cfg.TargetID) != cfg.TargetID || cfg.TargetID == "" || len(cfg.TargetID) > 256 {
 		return nil, errors.New("invalid kubernetes storage target")
 	}
-	capacity, err := resource.ParseQuantity(cfg.Capacity)
+	if len(validation.IsDNS1123Label(cfg.Profile)) != 0 {
+		return nil, errors.New("invalid kubernetes storage profile name")
+	}
+	profile, ok := cfg.Profiles[cfg.Profile]
+	if !ok {
+		return nil, errors.New("unknown kubernetes storage profile")
+	}
+	if len(validation.IsDNS1123Subdomain(profile.StorageClass)) != 0 {
+		return nil, errors.New("kubernetes storage profile requires an explicit storage class")
+	}
+	capacity, err := resource.ParseQuantity(profile.Capacity)
 	if err != nil || capacity.Sign() <= 0 {
 		return nil, errors.New("kubernetes storage capacity must be positive")
 	}
-	p := &Provider{client: *client, config: cfg, capacity: capacity}
+	if profile.AccessMode == "" {
+		profile.AccessMode = corev1.ReadWriteOnce
+	}
+	if profile.AccessMode != corev1.ReadWriteOnce && profile.AccessMode != corev1.ReadWriteOncePod {
+		return nil, errors.New("unsupported kubernetes storage profile access mode")
+	}
+	// Retain only an immutable copy of the selected configuration.
+	cfg.Profiles = map[string]StorageProfile{cfg.Profile: profile}
+	p := &Provider{client: *client, config: cfg, profile: profile, capacity: capacity}
 	if err := p.checkAPI(ctx); err != nil {
 		return nil, err
 	}
@@ -87,7 +114,7 @@ func (p *Provider) validate(m domain.Materialization, allocate bool) error {
 	if err := m.Validate(); err != nil {
 		return err
 	}
-	if m.Provider != "kubernetes" || m.Target.ID != p.config.TargetID || (m.Target.StorageClass != "" && m.Target.StorageClass != p.config.StorageClass) {
+	if m.Provider != "kubernetes" || m.Target.ID != p.config.TargetID || (m.Target.StorageClass != "" && m.Target.StorageClass != p.profile.StorageClass) {
 		return ports.ErrWorkingStorageConflict
 	}
 	if allocate {
@@ -149,10 +176,10 @@ func (p *Provider) Allocate(ctx context.Context, m domain.Materialization) (port
 	}
 	mode := corev1.PersistentVolumeFilesystem
 	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: pvcName(m), Namespace: p.client.Namespace, Labels: ownership(m), Annotations: map[string]string{"thinkpixel.io/target": p.config.TargetID}},
+		ObjectMeta: metav1.ObjectMeta{Name: pvcName(m), Namespace: p.client.Namespace, Labels: ownership(m), Annotations: map[string]string{"thinkpixel.io/target": p.config.TargetID, "thinkpixel.io/storage-profile": p.config.Profile}},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: &p.config.StorageClass,
-			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			StorageClassName: &p.profile.StorageClass,
+			AccessModes:      []corev1.PersistentVolumeAccessMode{p.profile.AccessMode},
 			VolumeMode:       &mode,
 			Resources:        corev1.VolumeResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: p.capacity.DeepCopy()}},
 		},
@@ -166,8 +193,8 @@ func (p *Provider) Allocate(ctx context.Context, m domain.Materialization) (port
 		return ports.WorkingStorage{}, storageError(ctx, err)
 	}
 	// Never adopt a name collision or silently reuse storage with a different spec.
-	if !p.owned(actual, m) || actual.DeletionTimestamp != nil || actual.Spec.StorageClassName == nil || *actual.Spec.StorageClassName != p.config.StorageClass ||
-		actual.Spec.VolumeMode == nil || *actual.Spec.VolumeMode != mode || len(actual.Spec.AccessModes) != 1 || actual.Spec.AccessModes[0] != corev1.ReadWriteOnce ||
+	if !p.owned(actual, m) || actual.Annotations["thinkpixel.io/storage-profile"] != p.config.Profile || actual.DeletionTimestamp != nil || actual.Spec.StorageClassName == nil || *actual.Spec.StorageClassName != p.profile.StorageClass ||
+		actual.Spec.VolumeMode == nil || *actual.Spec.VolumeMode != mode || len(actual.Spec.AccessModes) != 1 || actual.Spec.AccessModes[0] != p.profile.AccessMode ||
 		actual.Spec.Resources.Requests.Storage().Cmp(p.capacity) != 0 || actual.Spec.DataSource != nil || actual.Spec.DataSourceRef != nil || actual.Spec.Selector != nil {
 		return ports.WorkingStorage{}, ports.ErrWorkingStorageConflict
 	}

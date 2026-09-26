@@ -177,7 +177,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] MAT-009 Prevent stale fence from checkpoint/commit. — transaction-scoped writer guard; provider/commit operation integration remains CHK/GEN work.
 - [x] K8S-001 Implement Kubernetes client/configuration adapter.
 - [x] K8S-002 Implement Kubernetes WorkingStorageProvider. — hot-storage allocation/status/release primitives; profile selection and Materialization orchestration remain subsequent tasks.
-- [ ] K8S-003 Create PVC/hot storage according to configured profile.
+- [x] K8S-003 Create PVC/hot storage according to configured profile. — operator-selected named filesystem profile with explicit class/capacity and RWO or RWOP access; process wiring remains pending.
 - [ ] K8S-004 Implement deterministic component layout.
 - [ ] K8S-005 Implement Materialization prepare.
 - [ ] K8S-006 Implement Materialization status.
@@ -569,3 +569,5 @@ YYYY-MM-DD | `ARC-...` | `<sha>` | `<commands/artifacts>` | `<notes>`
 2026-09-26 | `K8S-001` | this change | `go test -race ./internal/adapters/workingstorage/kubernetes -count=1`; focused `go vet`; `go build ./cmd/...` | Client-go core/discovery adapter with explicit kubeconfig/context or in-cluster credentials, required namespace, bounded timeout, and sanitized configuration errors. Local authenticated TLS fixtures verify requests and discovery; cancellation, timeout, and invalid configuration tests pass. Provider operations, process wiring, capability checks, and live-cluster qualification remain subsequent K8S work.
 
 2026-09-26 | `K8S-002` | this change | `go test -race ./internal/adapters/workingstorage/kubernetes ./internal/ports -count=1`; focused `go vet` | Provider-neutral hot-storage port and Kubernetes PVC adapter. HTTP fixtures verify concurrent idempotent allocation, ownership/specification conflicts, persisted-handle restart recovery, storage phases, API discovery failure, and UID/resource-version guarded deletion. No live cluster checks; profile selection, Materialization orchestration, AR attachment, CSI qualification, and process wiring remain pending.
+
+2026-09-26 | `K8S-003` | this change | `go test -race ./internal/adapters/workingstorage/kubernetes ./internal/ports -count=1`; focused `go vet` | Named operator-selected storage profiles configure PVC class, capacity, and RWO/RWOP access. HTTP fixtures verify selected-profile requests, configuration-copy isolation, invalid-profile rejection before I/O, retry conflicts, and status/release after capacity changes. No live CSI qualification or process configuration wiring.

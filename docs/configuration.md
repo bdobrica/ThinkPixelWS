@@ -254,15 +254,40 @@ limit the service account independently, and AG authorization is still required.
 The client constructor supplies core-v1 and discovery clients without contacting
 the cluster or creating resources. `NewProvider(ctx, client, ProviderConfig)`
 constructs the Kubernetes `WorkingStorageProvider` for one operator-configured
-`TargetID`, explicit `StorageClass`, and positive `Capacity` (for example `1Gi`).
+`TargetID` and selects `Profile` from the operator-provided `Profiles` map. Each
+`StorageProfile` has an explicit `StorageClass`, positive `Capacity` (for example
+`1Gi`), and optional `AccessMode` (default `ReadWriteOnce`; alternatively
+`ReadWriteOncePod` with a supporting CSI driver). Unknown profile names, invalid
+selected profiles, and shared/read-only access modes are rejected before API I/O.
+Only the selected profile is validated and copied at construction; changing the
+configuration map afterward cannot alter an existing provider.
+
+For example, construct the adapter with:
+
+```go
+kubernetes.ProviderConfig{
+    TargetID: "demo",
+    Profile:  "durable",
+    Profiles: map[string]kubernetes.StorageProfile{
+        "durable": {StorageClass: "csi-ssd", Capacity: "8Gi"},
+    },
+}
+```
+
+Use an installed StorageClass name; the example does not provision a CSI driver.
+A nonempty Materialization target storage class must match the selected profile.
+The profile is operator-selected, not supplied by Workspace content or API callers.
 It checks the namespaced core PVC API at construction and before each operation.
 This is API availability discovery, not a check of RBAC permissions or CSI
 snapshot/clone support.
 
-The provider allocates an empty filesystem PVC with `ReadWriteOnce`, reports its
+The provider allocates an empty filesystem PVC with the selected access mode, reports its
 storage phase, and requests deletion of that PVC. It uses deterministic names,
 tenant/Workspace/Materialization ownership metadata, and handles tied to PVC UIDs.
-Allocation retries reject ownership or specification conflicts. Release checks
+Allocation records the profile name in a PVC annotation. Retries reject profile,
+ownership, or specification conflicts; changing a profile does not resize an
+existing PVC. Status and release remain available after capacity/access-mode or
+profile-name changes when the target and storage class still match. Release checks
 ownership and uses UID/resource-version preconditions; absent storage is already
 released, while terminating storage is still reported as releasing. PVCs have no
 sandbox owner reference, so sandbox deletion does not trigger their garbage
@@ -276,7 +301,7 @@ load tenant-scoped records, persist the returned opaque handle, and detach
 execution before release. No credentials are included in handles. The provider
 has no database or portable-store access.
 
-Process configuration/wiring, profile selection, component layout, restore and
+Process configuration/wiring, component layout, restore and
 Materialization lifecycle orchestration, AR attachment, and CSI capability
 qualification remain pending in TODO.md. This adapter is not yet exposed through
 the process JSON/environment loader. Tests use local HTTP API fixtures; no live

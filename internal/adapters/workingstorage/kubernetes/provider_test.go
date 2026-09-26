@@ -110,7 +110,7 @@ func providerFixture(t *testing.T) (*Provider, *storageFixture, domain.Materiali
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := NewProvider(context.Background(), client, ProviderConfig{TargetID: "test-target", StorageClass: "ssd", Capacity: "1Gi"})
+	p, err := NewProvider(context.Background(), client, testProviderConfig("test-target", "ssd", "1Gi"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestProviderRejectsCollisions(t *testing.T) {
 func TestProviderUnavailableAndValidation(t *testing.T) {
 	p, f, m := providerFixture(t)
 	ctx := context.Background()
-	for _, cfg := range []ProviderConfig{{TargetID: "t", StorageClass: "", Capacity: "1Gi"}, {TargetID: "t", StorageClass: "ssd", Capacity: "0"}, {TargetID: "t", StorageClass: "ssd", Capacity: "invalid"}, {TargetID: "", StorageClass: "ssd", Capacity: "1Gi"}} {
+	for _, cfg := range []ProviderConfig{testProviderConfig("t", "", "1Gi"), testProviderConfig("t", "ssd", "0"), testProviderConfig("t", "ssd", "invalid"), testProviderConfig("", "ssd", "1Gi")} {
 		if _, err := NewProvider(ctx, &p.client, cfg); err == nil {
 			t.Fatal("accepted invalid config")
 		}
@@ -340,4 +340,10 @@ func TestProviderStoragePhases(t *testing.T) {
 	if f.deletes != 0 {
 		t.Fatal("repeated deletion of terminating volume")
 	}
+}
+
+func testProviderConfig(target, class, capacity string) ProviderConfig {
+	return ProviderConfig{TargetID: target, Profile: "standard", Profiles: map[string]StorageProfile{
+		"standard": {StorageClass: class, Capacity: capacity},
+	}}
 }
