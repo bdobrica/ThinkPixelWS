@@ -32,7 +32,7 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 		TenantID: in.Writer.TenantID, WorkspaceID: in.Writer.WorkspaceID,
 		ID: in.GenerationID, Number: in.ExpectedHead + 1, ParentNumber: &in.ExpectedHead,
 		ManifestDigest: in.ManifestDigest, Durability: in.Durability,
-		CreatedByPrincipal: in.Principal, CreatedByExecution: in.ExecutionID,
+		CreatedByPrincipal: in.Principal, CreatedByRun: in.RunID, CreatedByExecution: in.ExecutionID,
 	}).WorkspaceGeneration(time.Now().UTC())
 	if err != nil {
 		return zero, err
@@ -61,8 +61,8 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 		return zero, err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO thinkpixelws.workspace_generations
- (tenant_id,workspace_id,generation,generation_id,parent_generation,state,manifest_digest,durability,created_by_principal,created_by_execution_id,created_at)
- VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, g.TenantID, g.WorkspaceID, g.Number, g.ID, g.ParentNumber, g.State, g.ManifestDigest.String(), g.Durability, g.CreatedByPrincipal, g.CreatedByExecution, g.CreatedAt)
+ (tenant_id,workspace_id,generation,generation_id,parent_generation,state,manifest_digest,durability,created_by_principal,created_by_execution_id,created_by_run_id,created_at)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, g.TenantID, g.WorkspaceID, g.Number, g.ID, g.ParentNumber, g.State, g.ManifestDigest.String(), g.Durability, g.CreatedByPrincipal, g.CreatedByExecution, g.CreatedByRun, g.CreatedAt)
 	if err != nil {
 		return zero, err
 	}

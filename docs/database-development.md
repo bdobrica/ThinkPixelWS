@@ -7,7 +7,10 @@
 for publishing prepared content from an ACTIVE or CHECKPOINTING writable
 Materialization. The caller supplies tenant/Workspace/Materialization identity,
 lease and fence, expected head, captured Materialization state version, stable
-generation ID, manifest digest, durability, principal and optional Execution ID.
+generation ID, manifest digest, durability, principal and optional Run/Execution IDs.
+Provenance comes from trusted governance/runtime context and conveys no authority;
+WS does not query AG or AR databases to validate these identities. Existing
+generations retain absent Run provenance rather than inventing attribution.
 The adapter creates the next immutable generation, records the previous head as
 its parent, advances the head and writes linked audit/outbox records in one
 serializable transaction. It checks the writer both before mutation and just
@@ -18,7 +21,7 @@ the caller under AG governance and capture, persist and verify a complete
 immutable manifest and its content before calling it. Provider IO must happen
 outside the transaction; a digest supplied by an agent or a mutable PVC reference
 is not evidence of a completed capture. The adapter does not inspect blob content
-or implement capture, component snapshot references, Run provenance, HTTP
+or implement capture, component snapshot references, HTTP
 idempotency or the public commit endpoint. It preserves Materialization state and
 base generation and does not claim that later filesystem writes are clean.
 

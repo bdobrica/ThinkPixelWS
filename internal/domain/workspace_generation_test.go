@@ -38,6 +38,8 @@ func TestNewWorkspaceGenerationRejectsInvalidInput(t *testing.T) {
 		"invalid durability":   func(input *NewWorkspaceGeneration) { input.Durability = "local" },
 		"blank creator":        func(input *NewWorkspaceGeneration) { input.CreatedByPrincipal = "" },
 		"unnormalized creator": func(input *NewWorkspaceGeneration) { input.CreatedByPrincipal = " principal " },
+		"nil Run ID":           func(input *NewWorkspaceGeneration) { id := uuid.Nil; input.CreatedByRun = &id },
+		"non-v7 Run ID":        func(input *NewWorkspaceGeneration) { id := uuid.New(); input.CreatedByRun = &id },
 		"non-v7 execution ID": func(input *NewWorkspaceGeneration) {
 			executionID := uuid.New()
 			input.CreatedByExecution = &executionID
@@ -83,5 +85,29 @@ func validNewWorkspaceGeneration(t *testing.T) NewWorkspaceGeneration {
 		Number: 2, ParentNumber: &parent, ManifestDigest: shared.DigestBytes([]byte("manifest")),
 		Durability: GenerationDurabilityProviderLocal, CreatedByPrincipal: "principal-123",
 		CreatedByExecution: &executionID,
+	}
+}
+
+func TestWorkspaceGenerationProvenance(t *testing.T) {
+	input := validNewWorkspaceGeneration(t)
+	run := uuid.Must(uuid.NewV7())
+	execution := *input.CreatedByExecution
+	input.CreatedByRun = &run
+	g, err := input.WorkspaceGeneration(time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.CreatedByRun == nil || *g.CreatedByRun != run || g.CreatedByExecution == nil || *g.CreatedByExecution != execution || g.CreatedByPrincipal != input.CreatedByPrincipal {
+		t.Fatalf("lost provenance: %+v", g)
+	}
+	*input.CreatedByRun = uuid.Nil
+	*input.CreatedByExecution = uuid.Nil
+	if err := g.Validate(); err != nil {
+		t.Fatalf("caller mutated generation provenance: %v", err)
+	}
+	input.CreatedByRun, input.CreatedByExecution = nil, nil
+	g, err = input.WorkspaceGeneration(time.Now())
+	if err != nil || g.CreatedByRun != nil || g.CreatedByExecution != nil {
+		t.Fatalf("optional provenance: %+v %v", g, err)
 	}
 }

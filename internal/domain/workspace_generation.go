@@ -36,6 +36,7 @@ type WorkspaceGeneration struct {
 	ManifestDigest     shared.SHA256Digest
 	Durability         GenerationDurability
 	CreatedByPrincipal string
+	CreatedByRun       *uuid.UUID
 	CreatedByExecution *uuid.UUID
 	CreatedAt          time.Time
 }
@@ -49,6 +50,7 @@ type NewWorkspaceGeneration struct {
 	ManifestDigest     shared.SHA256Digest
 	Durability         GenerationDurability
 	CreatedByPrincipal string
+	CreatedByRun       *uuid.UUID
 	CreatedByExecution *uuid.UUID
 }
 
@@ -58,7 +60,8 @@ func (input NewWorkspaceGeneration) WorkspaceGeneration(now time.Time) (Workspac
 		Number: input.Number, ParentNumber: input.ParentNumber,
 		State: WorkspaceGenerationCompleted, ManifestDigest: input.ManifestDigest,
 		Durability: input.Durability, CreatedByPrincipal: input.CreatedByPrincipal,
-		CreatedByExecution: input.CreatedByExecution,
+		CreatedByRun:       cloneUUID(input.CreatedByRun),
+		CreatedByExecution: cloneUUID(input.CreatedByExecution),
 		CreatedAt:          now.UTC(),
 	}
 	if err := generation.Validate(); err != nil {
@@ -91,6 +94,9 @@ func (generation WorkspaceGeneration) Validate() error {
 	}
 	if strings.TrimSpace(generation.CreatedByPrincipal) != generation.CreatedByPrincipal || generation.CreatedByPrincipal == "" || utf8.RuneCountInString(generation.CreatedByPrincipal) > maxGenerationCreatorIDLength {
 		return errors.New("workspace generation creator is invalid")
+	}
+	if !validOptionalUUIDv7(generation.CreatedByRun) {
+		return errors.New("workspace generation Run ID must be UUIDv7")
 	}
 	if generation.CreatedByExecution != nil && (generation.CreatedByExecution.Version() != 7 || *generation.CreatedByExecution == uuid.Nil) {
 		return errors.New("workspace generation execution ID must be UUIDv7")

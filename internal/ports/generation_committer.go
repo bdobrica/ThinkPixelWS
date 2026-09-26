@@ -10,8 +10,11 @@ import (
 
 // GenerationCommit is trusted WS input, not a public request or an authority
 // grant. Before calling, authorize under AG governance and capture and verify
-// immutable content from this writer outside the metadata transaction. The
-// manifest must describe that complete capture, not the mutable PVC itself.
+// immutable content from this writer outside the metadata transaction.
+// Principal, RunID and ExecutionID must come from trusted governance/runtime
+// context, not untrusted workspace content. Optional IDs record attribution,
+// not authority; WS does not validate them against another component database.
+// The manifest must describe that complete capture, not the mutable PVC itself.
 type GenerationCommit struct {
 	Writer                 MaterializationWriter
 	ExpectedHead           uint64
@@ -20,6 +23,7 @@ type GenerationCommit struct {
 	ManifestDigest         shared.SHA256Digest
 	Durability             domain.GenerationDurability
 	Principal              string
+	RunID                  *uuid.UUID
 	ExecutionID            *uuid.UUID
 	RequestID, TraceID     string
 }

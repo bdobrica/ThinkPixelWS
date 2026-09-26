@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"math"
+	"os"
 	"reflect"
 	"testing"
 
@@ -31,6 +32,8 @@ func TestGenerationCommitInvalidInput(t *testing.T) {
 		func(in *ports.GenerationCommit) { in.MaterializationVersion = 0 },
 		func(in *ports.GenerationCommit) { in.ManifestDigest = shared.SHA256Digest{} },
 		func(in *ports.GenerationCommit) { in.Durability = "unknown" },
+		func(in *ports.GenerationCommit) { id := uuid.Nil; in.RunID = &id },
+		func(in *ports.GenerationCommit) { id := uuid.New(); in.RunID = &id },
 		func(in *ports.GenerationCommit) { in.Principal = "" },
 		func(in *ports.GenerationCommit) { in.GenerationID = uuid.Nil },
 	} {
@@ -66,6 +69,8 @@ func TestGenerationCommitPostgres(t *testing.T) {
 	in := generationCommitInput(w)
 	execution := uuid.Must(uuid.NewV7())
 	in.ExecutionID = &execution
+	run := uuid.Must(uuid.NewV7())
+	in.RunID = &run
 	before, err := NewMaterializationRepository(db).Get(t.Context(), m.TenantID, m.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +83,7 @@ func TestGenerationCommitPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(g, stored) || g.ID != in.GenerationID || g.Number != 2 || g.ParentNumber == nil || *g.ParentNumber != 1 || g.ManifestDigest != in.ManifestDigest || g.CreatedByPrincipal != in.Principal || g.CreatedByExecution == nil || *g.CreatedByExecution != execution {
+	if !reflect.DeepEqual(g, stored) || g.ID != in.GenerationID || g.Number != 2 || g.ParentNumber == nil || *g.ParentNumber != 1 || g.ManifestDigest != in.ManifestDigest || g.CreatedByRun == nil || *g.CreatedByRun != run || g.CreatedByPrincipal != in.Principal || g.CreatedByExecution == nil || *g.CreatedByExecution != execution {
 		t.Fatalf("generation did not round trip: %+v %+v", g, stored)
 	}
 	assertCommitCounts(t, db, 2, 2, 1)
@@ -103,10 +108,15 @@ func TestGenerationCommitPostgres(t *testing.T) {
 	assertCommitCounts(t, db, 2, 2, 1)
 	// The same current writer can publish another capture without rebasing its
 	// materialization or overwriting its original immutable base.
+	in.RunID, in.ExecutionID = nil, nil
 	in.ExpectedHead = 2
 	in.GenerationID = uuid.Must(uuid.NewV7())
 	if _, err := (GenerationCommitter{DB: db}).Commit(t.Context(), in); err != nil {
 		t.Fatal(err)
+	}
+	stored, err = (WorkspaceReader{DB: db}).GetGeneration(t.Context(), m.TenantID, m.WorkspaceID, 3)
+	if err != nil || stored.CreatedByRun != nil || stored.CreatedByExecution != nil || stored.CreatedByPrincipal != in.Principal {
+		t.Fatalf("optional provenance readback: %+v %v", stored, err)
 	}
 	assertCommitCounts(t, db, 3, 3, 2)
 }
@@ -206,4 +216,33 @@ func TestGenerationCommitConcurrentPostgres(t *testing.T) {
 		t.Fatalf("%d commits succeeded", success)
 	}
 	assertCommitCounts(t, db, 2, 2, 1)
+}
+
+func TestGenerationRunProvenanceMigrationPostgres(t *testing.T) {
+	db, _, m, _, _ := writerGuardFixture(t)
+	// Applying the migration to preexisting immutable generations must preserve
+	// their absence of Run attribution. Rollback/reapplication also remains valid.
+	for _, name := range []string{"000027_generation_run_provenance.down.sql", "000027_generation_run_provenance.up.sql"} {
+		migration, err := os.ReadFile("../../../migrations/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.ExecContext(t.Context(), string(migration)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	g, err := (WorkspaceReader{DB: db}).GetGeneration(t.Context(), m.TenantID, m.WorkspaceID, 1)
+	if err != nil || g.CreatedByRun != nil {
+		t.Fatalf("existing generation: %+v %v", g, err)
+	}
+	for _, id := range []uuid.UUID{uuid.Nil, uuid.New()} {
+		_, err := db.ExecContext(t.Context(), `INSERT INTO thinkpixelws.workspace_generations
+   (tenant_id,workspace_id,generation,generation_id,parent_generation,state,manifest_digest,durability,created_by_principal,created_by_run_id)
+   SELECT tenant_id,workspace_id,2,$1,1,state,manifest_digest,durability,created_by_principal,$2
+   FROM thinkpixelws.workspace_generations WHERE generation=1`, uuid.Must(uuid.NewV7()), id)
+		var pgErr *pq.Error
+		if !errors.As(err, &pgErr) || pgErr.Code != "23514" || pgErr.Constraint != "workspace_generations_run_id_uuidv7" {
+			t.Fatalf("invalid Run ID: %v", err)
+		}
+	}
 }
