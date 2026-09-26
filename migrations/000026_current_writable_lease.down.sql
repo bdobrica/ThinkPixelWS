@@ -1,0 +1,1 @@
+DROP INDEX thinkpixelws.materialization_leases_current_writer;

@@ -58,14 +58,24 @@ increments produce distinct increasing tokens through PostgreSQL's maximum bigin
 Exhaustion fails without wrapping. Allocation preserves lifecycle state/version and
 timestamps. Lease acquisition must use a transaction-backed repository and insert
 the lease in that same transaction; a rolled-back token must never be published.
-This primitive does not acquire a lease or grant authority. Current-writer
-uniqueness, renewal/expiry operations, and commit fencing remain MAT-006/008/009. Provider provisioning/AR attachment, checkpoint/dirty
+This primitive does not acquire a lease or grant authority.
+Migration `000026` adds a partial unique index on `(tenant_id, workspace_id)` for
+leases with `released_at IS NULL`. Existing duplicate slots fail migration rather
+than silently selecting a writer. Rolling back the index preserves lease history.
+The lease repository acquires a slot and allocates its fence in one transaction,
+locking the Workspace before the Materialization. Initial acquisition accepts
+writable REQUESTED/PREPARING/READY Materializations; callers must separately check
+Workspace eligibility and governed authorization. Database wall time after lock
+acquisition starts the 60-second lease. Conflicts and insert failures roll back the
+fence; results are returned only after commit. Released history does not occupy a
+slot. Expired but unreleased leases still block acquisition until MAT-008 implements
+retirement/renewal; checkpoint commit fencing remains MAT-009. Provider provisioning/AR attachment, checkpoint/dirty
 status, and execution references also remain subsequent work.
 
 - Every repository method requires an explicit tenant context and applies it in predicates; database roles/RLS are defense in depth.
 - Generation numbers and event sequence numbers are allocated while locking the Workspace row.
 - A trigger or revoked update/delete privileges reject mutation/deletion of completed generation, component-generation, and provenance rows.
-- Writer acquisition locks the Workspace, increments `writer_fence`, and inserts the only unexpired active writer lease. A partial unique index covers active lease status; serializable retry handles expiry races.
+- Writer acquisition locks the Workspace, increments `writer_fence`, and inserts the only unexpired active writer lease. A partial unique index covers unreleased leases; expiry retirement remains pending.
 - Commit locks Workspace and lease, validates expected head/fence/expiry, inserts the generation graph, advances head, and inserts audit/outbox records atomically.
 - State-changing operations update `state_version` with expected-version compare-and-swap.
 - Audit/outbox payloads contain identifiers and policy-safe metadata only.

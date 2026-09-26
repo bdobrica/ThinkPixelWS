@@ -91,8 +91,8 @@ func TestMaterializationLeaseSchemaPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Rollback removes lease metadata only, retaining Materializations and generations.
-	for _, direction := range []string{"down", "up"} {
-		data, err := os.ReadFile("../../../migrations/000025_materialization_leases." + direction + ".sql")
+	for _, migration := range []string{"000026_current_writable_lease.down", "000025_materialization_leases.down", "000025_materialization_leases.up", "000026_current_writable_lease.up"} {
+		data, err := os.ReadFile("../../../migrations/" + migration + ".sql")
 		if err != nil {
 			t.Fatal(err)
 		}
