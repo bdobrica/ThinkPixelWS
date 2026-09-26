@@ -3,16 +3,24 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	clockadapter "github.com/bdobrica/ThinkPixelWS/internal/adapters/clock"
 	"github.com/bdobrica/ThinkPixelWS/internal/adapters/httpserver"
+	"github.com/bdobrica/ThinkPixelWS/internal/adapters/postgres"
+	"github.com/bdobrica/ThinkPixelWS/internal/app/workspace"
 	"github.com/bdobrica/ThinkPixelWS/internal/config"
 	"github.com/bdobrica/ThinkPixelWS/internal/telemetry"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -37,7 +45,24 @@ func run() error {
 		return fmt.Errorf("initialize tracing: %w", err)
 	}
 
+	var api http.Handler
+	var readiness httpserver.Readiness
+	if cfg.DatabaseURLFile != "" {
+		db, err := openDatabase(cfg.DatabaseURLFile)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+		readiness = databaseReadiness{db}
+		api, err = httpserver.NewWorkspaceAPI(workspace.Creator{Store: postgres.WorkspaceCreator{DB: db}, Clock: clockadapter.System{}})
+		if err != nil {
+			return fmt.Errorf("initialize Workspace API: %w", err)
+		}
+	}
+
 	server, err := httpserver.New(cfg, httpserver.Dependencies{
+		API:        api,
+		Readiness:  readiness,
 		Registry:   telemetry.NewPrometheusRegistry(),
 		Tracer:     tracing.Provider,
 		Propagator: tracing.Propagator,
@@ -75,3 +100,32 @@ func logLevel(level string) slog.Level {
 		return slog.LevelInfo
 	}
 }
+
+// The locator is configuration; the database credential stays outside Workspace state.
+func openDatabase(path string) (*sql.DB, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, errors.New("cannot read database URL file")
+	}
+	if len(data) == 0 || len(data) > 8192 || strings.TrimSpace(string(data)) == "" {
+		return nil, errors.New("invalid database URL file")
+	}
+	db, err := sql.Open("postgres", strings.TrimSpace(string(data)))
+	if err != nil {
+		return nil, errors.New("cannot initialize PostgreSQL")
+	}
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(2)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, errors.New("cannot connect to PostgreSQL")
+	}
+	return db, nil
+}
+
+type databaseReadiness struct{ db *sql.DB }
+
+func (r databaseReadiness) Ready(ctx context.Context) error { return r.db.PingContext(ctx) }

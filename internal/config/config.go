@@ -39,6 +39,7 @@ var (
 // Config contains process-level configuration. It does not contain secret
 // values; credentials are represented only by secret locators.
 type Config struct {
+	DatabaseURLFile  string                     `json:"database_url_file"`
 	Auth             AuthConfig                 `json:"auth"`
 	HTTP             HTTPConfig                 `json:"http"`
 	Log              LogConfig                  `json:"log"`
@@ -109,8 +110,9 @@ func LoadFromEnvironment() (Config, error) {
 }
 
 type fileConfig struct {
-	Auth *AuthConfig `json:"auth"`
-	HTTP *struct {
+	DatabaseURLFile *string     `json:"database_url_file"`
+	Auth            *AuthConfig `json:"auth"`
+	HTTP            *struct {
 		ListenAddress     *string `json:"listen_address"`
 		ReadHeaderTimeout *string `json:"read_header_timeout"`
 		RequestTimeout    *string `json:"request_timeout"`
@@ -158,6 +160,9 @@ func load(path string, lookup lookupEnv) (Config, error) {
 }
 
 func applyFile(cfg *Config, file fileConfig) error {
+	if file.DatabaseURLFile != nil {
+		cfg.DatabaseURLFile = *file.DatabaseURLFile
+	}
 	if file.Auth != nil {
 		cfg.Auth = *file.Auth
 	}
@@ -204,10 +209,11 @@ func setDuration(value *string, target *time.Duration) error {
 
 func applyEnvironment(cfg *Config, lookup lookupEnv) error {
 	for key, target := range map[string]*string{
-		"THINKPIXELWS_AUTH_MODE":       &cfg.Auth.Mode,
-		"THINKPIXELWS_AUTH_TENANT_ID":  &cfg.Auth.TenantID,
-		"THINKPIXELWS_AUTH_PRINCIPAL":  &cfg.Auth.Principal,
-		"THINKPIXELWS_AUTH_TOKEN_FILE": &cfg.Auth.TokenFile,
+		"THINKPIXELWS_DATABASE_URL_FILE": &cfg.DatabaseURLFile,
+		"THINKPIXELWS_AUTH_MODE":         &cfg.Auth.Mode,
+		"THINKPIXELWS_AUTH_TENANT_ID":    &cfg.Auth.TenantID,
+		"THINKPIXELWS_AUTH_PRINCIPAL":    &cfg.Auth.Principal,
+		"THINKPIXELWS_AUTH_TOKEN_FILE":   &cfg.Auth.TokenFile,
 	} {
 		if v, ok := lookup(key); ok {
 			*target = v

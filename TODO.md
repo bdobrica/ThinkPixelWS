@@ -151,7 +151,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] IAM-003 Implement Workspace administrative authorization port. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/ports`; `go vet ./internal/security ./internal/ports`; `git diff --check`; `docs/security.md` (administrative scope and fail-closed enforcement)
 - [ ] IAM-004 Implement OPA/Rego reference authorization adapter.
 - [x] IAM-005 Implement explicit safe development auth mode. — completed 2026-09-26, commit: this change, evidence: `go test -race ./internal/security ./internal/config ./internal/adapters/httpserver`; `go vet ./internal/security ./internal/config ./internal/adapters/httpserver ./cmd/thinkpixelws`; `git diff --check`; `docs/configuration.md` (opt-in local setup and limitations)
-- [ ] API-001 Implement create Workspace.
+- [x] API-001 Implement create Workspace. — completed 2026-09-26, commit: this change, evidence: focused race tests including `TestCreateWorkspacePostgres` against PostgreSQL; live process HTTP 201 and identical replay after restart; focused `go vet`; service build; vulnerability and license checks.
 - [ ] API-002 Implement list/get Workspace with tenant-safe pagination.
 - [ ] API-003 Implement component/generation read APIs.
 - [ ] DB-024 Add real PostgreSQL empty-migration tests.
@@ -543,3 +543,5 @@ Supersede obsolete assumptions with a later entry.
 Date | TODO IDs | Commit | Verification evidence | Notes/deviations
 --- | --- | --- | --- | ---
 YYYY-MM-DD | `ARC-...` | `<sha>` | `<commands/artifacts>` | `<notes>`
+
+2026-09-26 | `API-001` | this change | PostgreSQL HTTP integration race tests; live HTTP create/restart replay; focused vet/build; vulnerability and license checks | Creates metadata in CREATING; list/get and materialization remain separate tasks.

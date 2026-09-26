@@ -58,7 +58,7 @@ See the [continuous-integration guide](docs/continuous-integration.md) and
 [`docs/phase-0-evidence.md`](docs/phase-0-evidence.md) and
 [`docs/phase-1-evidence.md`](docs/phase-1-evidence.md) for phase evidence.
 
-For local authentication setup, see [development auth configuration](docs/configuration.md#development-authentication). Workspace API endpoints remain pending.
+`POST /v1/workspaces` creates tenant-scoped Workspace metadata in PostgreSQL with authorization, durable idempotency, and atomic audit/outbox records. See [local create setup](docs/configuration.md#workspace-api-and-postgresql). List/get and content/materialization APIs remain pending.
 
 Local PostgreSQL development additionally requires Docker with Compose. Use
 `make postgres-up`, then explicitly apply migrations with `make migrate`. See

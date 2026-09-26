@@ -38,7 +38,7 @@ func (repository *WorkspaceRepository) Create(ctx context.Context, tenantID uuid
 	if err := workspace.Validate(); err != nil {
 		return fmt.Errorf("validate workspace: %w", err)
 	}
-	residency, err := json.Marshal(workspace.Residency)
+	residency, err := json.Marshal(append([]string{}, workspace.Residency...))
 	if err != nil {
 		return fmt.Errorf("encode workspace residency: %w", err)
 	}
