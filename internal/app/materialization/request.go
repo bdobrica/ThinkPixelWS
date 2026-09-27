@@ -30,7 +30,7 @@ type RequestScopeVerifier struct {
 // separate, narrower scope for verification. Empty access is never "all".
 //
 // Success checks only Workspace/generation/component scope and per-component
-// modes, including the overall Materialization mode. A writable Materialization
+// modes, including the overall Materialization mode, and any supplied Run/Execution references. A writable Materialization
 // requires write authority for every selected component, even if its requested
 // component mode is read-only. Action, administrative authorization, component
 // membership and policy/lease checks remain separate prerequisites.
@@ -50,6 +50,11 @@ func (v RequestScopeVerifier) Verify(ctx context.Context, request Request) (port
 	if err != nil {
 		return ports.ExecutionAuthority{}, err
 	}
+	if (authority.ExecutionID != uuid.Nil && (authority.ExecutionID.Version() != 7 || authority.ExecutionID.Variant() != uuid.RFC4122)) ||
+		(m.RunID != uuid.Nil && m.RunID != authority.RunID) ||
+		(m.ExecutionID != uuid.Nil && m.ExecutionID != authority.ExecutionID) {
+		return ports.ExecutionAuthority{}, security.ErrExecutionAuthority
+	}
 	if m.Mode == domain.MaterializationReadWrite {
 		grantedModes := make(map[uuid.UUID]domain.MaterializationMode, len(authority.ComponentAccess))
 		for _, access := range authority.ComponentAccess {
@@ -62,4 +67,18 @@ func (v RequestScopeVerifier) Verify(ctx context.Context, request Request) (port
 		}
 	}
 	return authority, nil
+}
+
+// VerifiedMaterialization constructs initial metadata bound to freshly verified AG
+// Run and optional AR Execution claims. Supplied references may only match those
+// claims. It does not persist, provision, or authorize an action; Verify's other
+// authorization prerequisites still apply. No grant credential enters the record.
+func (v RequestScopeVerifier) VerifiedMaterialization(ctx context.Context, request Request) (domain.Materialization, error) {
+	authority, err := v.Verify(ctx, request)
+	if err != nil {
+		return domain.Materialization{}, err
+	}
+	input := request.Materialization
+	input.RunID, input.ExecutionID = authority.RunID, authority.ExecutionID
+	return input.Materialization(v.Clock.Now())
 }

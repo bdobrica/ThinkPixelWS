@@ -341,7 +341,7 @@ func TestMaterializationRepositoryPostgres(t *testing.T) {
 	})
 
 	// The new migration can be rolled back and reapplied without changing canonical state.
-	for _, migration := range []string{"000026_current_writable_lease.down", "000025_materialization_leases.down", "000024_materialization_binding.down", "000023_materializations.down", "000023_materializations.up", "000024_materialization_binding.up", "000025_materialization_leases.up", "000026_current_writable_lease.up"} {
+	for _, migration := range []string{"000030_materialization_execution_references.down", "000026_current_writable_lease.down", "000025_materialization_leases.down", "000024_materialization_binding.down", "000023_materializations.down", "000023_materializations.up", "000024_materialization_binding.up", "000025_materialization_leases.up", "000026_current_writable_lease.up", "000030_materialization_execution_references.up"} {
 		data, err := os.ReadFile("../../../migrations/" + migration + ".sql")
 		if err != nil {
 			t.Fatal(err)

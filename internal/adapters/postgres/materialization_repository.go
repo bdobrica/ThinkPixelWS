@@ -35,11 +35,11 @@ func (r *MaterializationRepository) Create(ctx context.Context, tenantID uuid.UU
 INSERT INTO thinkpixelws.materializations (
  tenant_id, materialization_id, workspace_id, base_generation, provider,
  target_id, target_region, target_storage_class, target_architecture,
- mode, lifecycle_state, state_version, created_at, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''),$10,$11,$12,$13,$14)`,
+ mode, lifecycle_state, state_version, created_at, updated_at, run_id, execution_id
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''),$10,$11,$12,$13,$14,NULLIF($15::uuid,'00000000-0000-0000-0000-000000000000'::uuid),NULLIF($16::uuid,'00000000-0000-0000-0000-000000000000'::uuid))`,
 		m.TenantID, m.ID, m.WorkspaceID, m.BaseGeneration, m.Provider,
 		m.Target.ID, m.Target.Region, m.Target.StorageClass, m.Target.Architecture,
-		m.Mode, m.State, m.StateVersion, m.CreatedAt, m.UpdatedAt)
+		m.Mode, m.State, m.StateVersion, m.CreatedAt, m.UpdatedAt, m.RunID, m.ExecutionID)
 	if err != nil {
 		return fmt.Errorf("insert materialization: %w", err)
 	}
@@ -54,12 +54,14 @@ func (r *MaterializationRepository) Get(ctx context.Context, tenantID, id uuid.U
 	err := r.db.QueryRowContext(ctx, `
 SELECT tenant_id, materialization_id, workspace_id, base_generation, provider,
  target_id, target_region, target_storage_class, COALESCE(target_architecture,''),
- mode, lifecycle_state, state_version, created_at, updated_at, COALESCE(provider_handle,''), COALESCE(clean_generation,0)
+ mode, lifecycle_state, state_version, created_at, updated_at, COALESCE(provider_handle,''), COALESCE(clean_generation,0),
+ COALESCE(run_id,'00000000-0000-0000-0000-000000000000'::uuid),
+ COALESCE(execution_id,'00000000-0000-0000-0000-000000000000'::uuid)
 FROM thinkpixelws.materializations
 WHERE tenant_id = $1 AND materialization_id = $2`, tenantID, id).Scan(
 		&m.TenantID, &m.ID, &m.WorkspaceID, &m.BaseGeneration, &m.Provider,
 		&m.Target.ID, &m.Target.Region, &m.Target.StorageClass, &m.Target.Architecture,
-		&m.Mode, &m.State, &m.StateVersion, &m.CreatedAt, &m.UpdatedAt, &m.Handle, &m.CleanGeneration)
+		&m.Mode, &m.State, &m.StateVersion, &m.CreatedAt, &m.UpdatedAt, &m.Handle, &m.CleanGeneration, &m.RunID, &m.ExecutionID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Materialization{}, ports.ErrMaterializationNotFound
 	}

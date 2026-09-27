@@ -218,3 +218,24 @@ func TestMaterializationCleanGeneration(t *testing.T) {
 		}
 	}
 }
+
+func TestMaterializationExecutionReferences(t *testing.T) {
+	input := materializationInput()
+	input.RunID, input.ExecutionID = uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
+	now := time.Now().UTC()
+	m, err := input.Materialization(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, err := m.TransitionState(MaterializationPreparing, 1, now)
+	if err != nil || next.RunID != input.RunID || next.ExecutionID != input.ExecutionID {
+		t.Fatalf("lost references: %#v %v", next, err)
+	}
+	for _, ids := range [][2]uuid.UUID{{uuid.Nil, input.ExecutionID}, {uuid.New(), uuid.Nil}, {input.RunID, uuid.New()}} {
+		invalid := input
+		invalid.RunID, invalid.ExecutionID = ids[0], ids[1]
+		if _, err := invalid.Materialization(now); err == nil {
+			t.Fatal("invalid references accepted")
+		}
+	}
+}

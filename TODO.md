@@ -312,7 +312,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] TAG-004 Validate read-only vs writable mode against AG grant. Scope verification checks explicit per-component modes and denies write escalation or invalid modes; TAG-006 checks overall Materialization mode.
 - [x] TAG-005 Reject Materialization request expanding component set. Application request scope verification rejects expansion without trimming or defaulting the set and rechecks authority on retries. HTTP creation, persisted component scope and storage enforcement remain integration prerequisites; no creation route is enabled.
 - [x] TAG-006 Reject writable Materialization when grant is read-only. Application request verification requires write authority for every selected component, rejects invalid overall modes and rechecks grant downgrades on retries. HTTP creation and storage enforcement remain unwired as noted in TAG-005.
-- [ ] TAG-007 Bind Materialization metadata to AG Run/AR Execution references.
+- [x] TAG-007 Bind Materialization metadata to AG Run/AR Execution references. VerifiedMaterialization derives Run and optional Execution references from fresh AG claims and rejects mismatches; domain/PostgreSQL metadata preserves immutable references. Legacy/local records may remain unbound. HTTP creation and live AG composition remain pending.
 - [ ] TAG-008 Handle AG grant expiry/revocation.
 - [ ] TAG-009 Stop lease renewal after authority expiry where applicable.
 - [ ] TAG-010 Ensure expired authority cannot commit new generation.

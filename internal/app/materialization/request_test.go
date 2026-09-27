@@ -162,3 +162,57 @@ func TestMaterializationRequestScope(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifiedMaterializationReferences(t *testing.T) {
+	now := time.Now().UTC()
+	id := func() uuid.UUID { return uuid.Must(uuid.NewV7()) }
+	request := Request{Materialization: domain.NewMaterialization{
+		TenantID: id(), ID: id(), WorkspaceID: id(), BaseGeneration: 1,
+		Mode: domain.MaterializationReadOnly, Provider: "kubernetes",
+		Target: domain.MaterializationTarget{ID: "local", Region: "local", StorageClass: "local-path"},
+	}, ComponentAccess: []ports.ExecutionComponentAccess{{ComponentID: id(), Mode: domain.MaterializationReadOnly}}, ExecutionGrant: "private-grant"}
+	authority := ports.ExecutionAuthority{Issuer: "ag", Audience: ports.ExecutionAuthorityAudience,
+		GrantID: "grant", TenantID: request.Materialization.TenantID, Principal: "alice", RunID: id(), ExecutionID: id(),
+		WorkspaceID: request.Materialization.WorkspaceID, ComponentAccess: request.ComponentAccess,
+		IssuedAt: now.Add(-time.Minute), NotBefore: now.Add(-time.Minute), ExpiresAt: now.Add(time.Minute)}
+	calls := 0
+	verifier := RequestScopeVerifier{Clock: requestClock{now}, Verifier: requestAuthorityVerifier(func(context.Context, ports.ExecutionAuthorityRequest) (ports.ExecutionAuthority, error) {
+		calls++
+		return authority, nil
+	})}
+	for _, execution := range []uuid.UUID{authority.ExecutionID, uuid.Nil} {
+		authority.ExecutionID = execution
+		m, err := verifier.VerifiedMaterialization(t.Context(), request)
+		if err != nil || m.RunID != authority.RunID || m.ExecutionID != execution || m.State != domain.MaterializationRequested {
+			t.Fatalf("verified record: %#v %v", m, err)
+		}
+		bound := request
+		bound.Materialization.RunID, bound.Materialization.ExecutionID = m.RunID, m.ExecutionID
+		if _, err := verifier.VerifiedMaterialization(t.Context(), bound); err != nil {
+			t.Fatal(err)
+		}
+		for _, change := range []func(*Request){
+			func(r *Request) { r.Materialization.RunID = id() },
+			func(r *Request) { r.Materialization.ExecutionID = id() },
+		} {
+			wrong := bound
+			change(&wrong)
+			got, err := verifier.VerifiedMaterialization(t.Context(), wrong)
+			if !errors.Is(err, security.ErrExecutionAuthority) || got != (domain.Materialization{}) {
+				t.Fatalf("accepted conflicting reference: %#v %v", got, err)
+			}
+		}
+	}
+	authority.ExecutionID = uuid.New()
+	if _, err := verifier.VerifiedMaterialization(t.Context(), request); !errors.Is(err, security.ErrExecutionAuthority) {
+		t.Fatalf("invalid execution accepted: %v", err)
+	}
+	authority.ExecutionID = uuid.Nil
+	authority.ExpiresAt = now
+	if _, err := verifier.VerifiedMaterialization(t.Context(), request); !errors.Is(err, security.ErrExecutionAuthority) {
+		t.Fatalf("expired retry accepted: %v", err)
+	}
+	if calls != 10 || request.Materialization.RunID != uuid.Nil || request.Materialization.ExecutionID != uuid.Nil {
+		t.Fatal("verification cached or request mutated")
+	}
+}

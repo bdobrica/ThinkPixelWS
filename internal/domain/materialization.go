@@ -56,6 +56,10 @@ func (h MaterializationHandle) Validate() error {
 // A read-write record is only intent: it does not establish a writer lease,
 // execution authority, or permission to provision or attach storage.
 type Materialization struct {
+	// RunID and optional ExecutionID are immutable correlation references, not authority.
+	// Both may be absent for legacy or explicitly local records.
+	RunID          uuid.UUID
+	ExecutionID    uuid.UUID
 	TenantID       uuid.UUID
 	ID             uuid.UUID
 	WorkspaceID    uuid.UUID
@@ -75,6 +79,8 @@ type Materialization struct {
 }
 
 type NewMaterialization struct {
+	RunID          uuid.UUID
+	ExecutionID    uuid.UUID
 	TenantID       uuid.UUID
 	ID             uuid.UUID
 	WorkspaceID    uuid.UUID
@@ -86,6 +92,7 @@ type NewMaterialization struct {
 
 func (input NewMaterialization) Materialization(now time.Time) (Materialization, error) {
 	m := Materialization{
+		RunID: input.RunID, ExecutionID: input.ExecutionID,
 		TenantID: input.TenantID, ID: input.ID, WorkspaceID: input.WorkspaceID,
 		BaseGeneration: input.BaseGeneration, Provider: input.Provider, Target: input.Target,
 		Mode: input.Mode, State: MaterializationRequested, StateVersion: 1,
@@ -98,6 +105,14 @@ func (input NewMaterialization) Materialization(now time.Time) (Materialization,
 }
 
 func (m Materialization) Validate() error {
+	if m.ExecutionID != uuid.Nil && m.RunID == uuid.Nil {
+		return errors.New("materialization execution requires a Run reference")
+	}
+	for _, id := range []uuid.UUID{m.RunID, m.ExecutionID} {
+		if id != uuid.Nil && (id.Version() != 7 || id.Variant() != uuid.RFC4122) {
+			return errors.New("materialization Run and Execution references must be UUIDv7")
+		}
+	}
 	if m.CleanGeneration != 0 && (m.CleanGeneration > math.MaxInt64 || m.Mode != MaterializationReadWrite || m.State != MaterializationCheckpointing) {
 		return errors.New("materialization clean generation requires a writable checkpointing materialization and valid generation")
 	}

@@ -199,6 +199,18 @@ after a grant downgrade on retry. This remains a scope/mode check, not a complet
 creation authorizer. HTTP creation, persisted component scope and enforcement by
 storage preparation/attachment are not wired; no live AG route is enabled.
 
+TAG-007 adds `RequestScopeVerifier.VerifiedMaterialization`, which constructs
+initial metadata using the freshly verified AG Run and optional AR Execution
+references. Caller-supplied references must match those claims; malformed
+Execution IDs are rejected. PostgreSQL stores the UUIDv7 references and rejects
+changes after creation, including adding references to an unbound record.
+Legacy/local records may omit both; an Execution reference requires a Run.
+These are correlation metadata, not authority, and contain no grant credential.
+A replacement Execution uses a new Materialization rather than rebinding the old
+record. Focused tests cover verified construction, mismatches, expired retries,
+persistence, immutability and migration down/up. This adds no HTTP or live AG
+composition and does not replace the remaining creation authorization checks.
+
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 
 WS intersects rather than unions permissions: requested components must be a subset; requested mode cannot exceed any per-component mode; Workspace-wide write does not infer external-binding use. A missing component is denied. A read-only grant cannot acquire/renew a writer lease, checkpoint as authoritative, or commit.
