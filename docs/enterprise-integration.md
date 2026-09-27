@@ -109,6 +109,30 @@ go test ./internal/adapters/workspace/kubernetes ./internal/adapters/sandbox/age
 go vet ./internal/adapters/workspace/kubernetes ./internal/adapters/sandbox/agentsandbox
 ```
 
+### Session close preservation (TAR-004)
+
+Closing or deleting an AR Session must not delete the independent WS Workspace,
+its canonical generations or WS-owned storage. AR may clean up its compute and
+attachment records. A WorkspaceBinding carries no deletion authority; WS
+Materialization release is a separate authorized operation and does not delete
+canonical Workspace content. AR's standalone storage retention policy must not
+be applied to externally owned WS resources.
+
+AR commit `5bbbc8e` adds `TestSessionClosePreservesWorkspaceMetadata`, exercising persisted
+`READY → CLOSING → CLOSED` transitions, repeated close transitions and a fresh
+PostgreSQL connection. It checks complete Workspace/generation metadata remains
+unchanged and no cleanup intent is queued. The fixture uses AR's existing
+standalone metadata tables; it is **not** evidence of a live WS service or
+physical storage surviving a complete Session-close workflow. AR's SES-003
+close handler and the authorized WS service composition remain pending, so
+TAR-004 stays open until that integrated path can be exercised. Reproduce against
+an isolated database with AR's migrations applied:
+
+```sh
+# From ThinkPixelAR; set THINKPIXELAR_TEST_DATABASE_URL to that database.
+go test ./internal/adapters/postgres -run '^TestSessionClosePreservesWorkspaceMetadata$' -count=1
+```
+
 ## ThinkPixelAG execution grant
 
 ### Service authentication
