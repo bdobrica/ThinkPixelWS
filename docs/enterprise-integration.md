@@ -162,6 +162,20 @@ generation, component, mode, action, classification/residency and WS lease/fence
 constraints. Administrative authorization also remains independent. The focused
 security tests use a verifier fixture; they do not qualify live AG verification.
 
+TAG-003 adds `security.VerifyExecutionScope`, which invokes that fresh-verification
+boundary before comparing an explicit `ExecutionScope` with the grant. Workspace
+IDs must match; a pinned grant generation must equal the requested generation,
+while an absent pin allows any valid generation within the remaining bounds.
+Generations must be positive signed-64-bit values, consistent with WS storage.
+Every requested component must appear in the grant. Empty requests, invalid
+UUIDv7 identifiers, duplicate requested/granted components, and any component
+expansion are denied with zero authority and the same sanitized error. Order is
+irrelevant and proper subsets are allowed; nothing is implicitly expanded or
+trimmed. Tests use verifier fixtures, including fresh denial after prior success.
+Callers must still resolve component membership within the authenticated tenant
+and Workspace generation and enforce mode/action/policy/lease constraints.
+Materialization request integration remains TAG-005; no live AG route is enabled.
+
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 
 WS intersects rather than unions permissions: requested components must be a subset; requested mode cannot exceed any per-component mode; Workspace-wide write does not infer external-binding use. A missing component is denied. A read-only grant cannot acquire/renew a writer lease, checkpoint as authoritative, or commit.

@@ -308,7 +308,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 
 - [x] TAG-001 Implement ThinkPixelAG execution-authority verifier port. Transport-independent verified claims and fail-closed consumption helper are implemented; a concrete AG adapter and operation-specific scope enforcement remain separate integration work.
 - [x] TAG-002 Add secure WS↔AG service authentication. An origin-bound mTLS client implements AG's published workload-identity transport contract; local TLS integration tests pass. Process wiring awaits the published WS grant exchange API.
-- [ ] TAG-003 Validate Workspace ID/generation/component subset against AG grant.
+- [x] TAG-003 Validate Workspace ID/generation/component subset against AG grant. Fresh-verification scope helper rejects mismatches and ambiguous component sets; Materialization request integration remains TAG-005.
 - [ ] TAG-004 Validate read-only vs writable mode against AG grant.
 - [ ] TAG-005 Reject Materialization request expanding component set.
 - [ ] TAG-006 Reject writable Materialization when grant is read-only.
