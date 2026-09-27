@@ -111,6 +111,41 @@ go vet ./internal/adapters/workspace/kubernetes ./internal/adapters/sandbox/agen
 
 ## ThinkPixelAG execution grant
 
+### Service authentication
+
+TAG-002 provides `internal/adapters/ag.NewClient`, using AG's published
+[`thinkpixelag.workload-identity/v1` contract](https://github.com/bdobrica/ThinkPixelAG/blob/main/docs/contracts/workload-identity.md).
+Its deployment-owned `ag.Config` requires an HTTPS `Origin` (scheme and host,
+including port when needed), `CAFile`, `CertificateFile`, `KeyFile`, and the exact
+`WorkloadURI` in the client certificate's single URI SAN. The client verifies
+AG's server certificate chain and hostname against those explicit CA roots,
+requires TLS 1.2 or newer, and presents the WS certificate for mutual TLS.
+
+Mount the CA bundle, certificate chain, and private key into the trusted WS
+service only, outside Workspace content and disposable agent compute. Restrict
+private-key access to the service account. Configure AG's trusted TLS listener
+with client-certificate verification and a deployment-owned binding from that
+exact URI to the intended tenant, WS principal, and action-specific service
+roles. Certificate identity does not select its own roles or authorize an action.
+No new WS grant role or route is defined here.
+
+`Client.Do` accepts requests only for that origin, rejects bearer/cookie and
+forwarded-identity credentials, disables redirects and environment proxies,
+honors request cancellation, and bounds each call to five seconds. Configuration
+and transport failures return sanitized errors. The caller must bound/read/close
+the response body and enforce the endpoint's status and response contract;
+HTTP authorization denials remain denials. Replace the client and close its idle
+connections after certificate or trust-root rotation; credentials load once.
+
+Tests perform real local mTLS handshakes with generated certificates, including
+untrusted peers, hostname mismatch, expired/wrong-purpose client certificates,
+redirect rejection, and independent HTTP authorization denial. They do not use
+a live AG deployment. The client is available for the future AG verifier adapter;
+the WS executable has no AG client configuration or grant exchange wiring yet,
+pending a published WS grant wire contract.
+
+### Execution authority
+
 TAG-001 provides `ports.ExecutionAuthorityVerifier` and typed authority claims,
 independent of AG transport types. `security.VerifyExecutionAuthority` invokes
 the verifier on every call, passes the authenticated tenant and opaque grant,
