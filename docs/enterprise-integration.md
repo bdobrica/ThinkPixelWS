@@ -156,6 +156,28 @@ assert WS database metadata, canonical generations, AG authority, or Session clo
 Those service-integration gaps remain as described above. No production code or
 authority contract changed.
 
+### Replacement Sandbox reattachment (TAR-006)
+
+AR commit `00a6f9e` extends `TestAttachedBlueprintComposesWSReservedVolumes` to reject an old Attempt
+reservation and denied current WS verification before replacement acquisition.
+With a fresh reservation, acquisition/replay renders the same Workspace claim
+and creates replacement compute exactly once.
+
+The live `TestLiveColdLifecycle` requires original Workspace bytes before the
+replacement appends new work; missing content fails instead of being initialized
+again. Old Sandbox/Pods must disappear before replacement acquisition. Fresh
+Sandbox/Pod UIDs, unchanged Workspace/state PVC identities and PV bindings, and
+exact continued bytes after a second deletion are checked. The final Kata run
+passed on 2026-09-27 in 33.82 seconds on `k3spi-02` with `local-path`. Reproduce
+with the command and inspect identities in AR's
+`docs/evidence/kas-019-live-lifecycle.md`; focused adapter tests and vet also passed.
+
+This completes provider reattachment verification. The live fixture uses its own
+claims and memory bindings; WS descriptor composition is tested separately with
+HTTP fixtures. Canonical-generation restore, node failover, persisted Session
+recovery and live WS/AG authorization are not demonstrated. Existing service
+integration prerequisites above remain unchanged. No production contract changed.
+
 ## ThinkPixelAG execution grant
 
 ### Service authentication
