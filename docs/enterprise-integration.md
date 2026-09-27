@@ -189,8 +189,14 @@ Expansion, substitution, empty sets and duplicate IDs are rejected without
 modifying the request; a proper subset stays a subset. The returned grant may
 contain more components and must never replace the requested set. Tests exercise
 these request cases and denial after the grant's component set changes on retry.
-This is a scope check, not a complete creation authorizer. Overall Materialization
-mode remains TAG-006. HTTP creation, persisted component scope and enforcement by
+TAG-006 also checks overall Materialization mode: writable requests require
+read-write grant authority for every selected component, even when a component
+request says read-only. Write authority for an unselected component cannot satisfy
+this check; an unused read-only grant component does not prevent a writable subset.
+Missing or unknown overall modes are denied without silently downgrading the
+request. Tests cover read-only/writable grants, mixed grants, subsets and denial
+after a grant downgrade on retry. This remains a scope/mode check, not a complete
+creation authorizer. HTTP creation, persisted component scope and enforcement by
 storage preparation/attachment are not wired; no live AG route is enabled.
 
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.

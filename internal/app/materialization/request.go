@@ -7,6 +7,7 @@ import (
 	"github.com/bdobrica/ThinkPixelWS/internal/ports"
 	"github.com/bdobrica/ThinkPixelWS/internal/ports/clock"
 	"github.com/bdobrica/ThinkPixelWS/internal/security"
+	"github.com/google/uuid"
 )
 
 // Request carries creation intent and the exact requested component access.
@@ -29,16 +30,36 @@ type RequestScopeVerifier struct {
 // separate, narrower scope for verification. Empty access is never "all".
 //
 // Success checks only Workspace/generation/component scope and per-component
-// modes. Overall Materialization mode, action, administrative authorization,
-// component membership and policy/lease checks remain separate prerequisites.
+// modes, including the overall Materialization mode. A writable Materialization
+// requires write authority for every selected component, even if its requested
+// component mode is read-only. Action, administrative authorization, component
+// membership and policy/lease checks remain separate prerequisites.
 // Callers must preserve the requested component set when persisting/preparing;
 // the returned grant may contain additional components and is not that set.
 func (v RequestScopeVerifier) Verify(ctx context.Context, request Request) (ports.ExecutionAuthority, error) {
 	m := request.Materialization
-	return security.VerifyExecutionScope(ctx, v.Verifier, v.Clock,
+	if m.Mode != domain.MaterializationReadOnly && m.Mode != domain.MaterializationReadWrite {
+		return ports.ExecutionAuthority{}, security.ErrExecutionAuthority
+	}
+	authority, err := security.VerifyExecutionScope(ctx, v.Verifier, v.Clock,
 		ports.ExecutionAuthorityRequest{TenantID: m.TenantID, Grant: request.ExecutionGrant},
 		security.ExecutionScope{
 			WorkspaceID: m.WorkspaceID, Generation: m.BaseGeneration,
 			ComponentAccess: request.ComponentAccess,
 		})
+	if err != nil {
+		return ports.ExecutionAuthority{}, err
+	}
+	if m.Mode == domain.MaterializationReadWrite {
+		grantedModes := make(map[uuid.UUID]domain.MaterializationMode, len(authority.ComponentAccess))
+		for _, access := range authority.ComponentAccess {
+			grantedModes[access.ComponentID] = access.Mode
+		}
+		for _, access := range request.ComponentAccess {
+			if grantedModes[access.ComponentID] != domain.MaterializationReadWrite {
+				return ports.ExecutionAuthority{}, security.ErrExecutionAuthority
+			}
+		}
+	}
+	return authority, nil
 }

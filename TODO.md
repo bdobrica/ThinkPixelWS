@@ -309,9 +309,9 @@ The following remain valuable but should not block the first integrated demo/RC 
 - [x] TAG-001 Implement ThinkPixelAG execution-authority verifier port. Transport-independent verified claims and fail-closed consumption helper are implemented; a concrete AG adapter and operation-specific scope enforcement remain separate integration work.
 - [x] TAG-002 Add secure WS↔AG service authentication. An origin-bound mTLS client implements AG's published workload-identity transport contract; local TLS integration tests pass. Process wiring awaits the published WS grant exchange API.
 - [x] TAG-003 Validate Workspace ID/generation/component subset against AG grant. Fresh-verification scope helper rejects mismatches and ambiguous component sets; TAG-005 applies it to Materialization request input.
-- [x] TAG-004 Validate read-only vs writable mode against AG grant. Scope verification checks explicit per-component modes and denies write escalation or invalid modes; overall Materialization mode remains TAG-006.
+- [x] TAG-004 Validate read-only vs writable mode against AG grant. Scope verification checks explicit per-component modes and denies write escalation or invalid modes; TAG-006 checks overall Materialization mode.
 - [x] TAG-005 Reject Materialization request expanding component set. Application request scope verification rejects expansion without trimming or defaulting the set and rechecks authority on retries. HTTP creation, persisted component scope and storage enforcement remain integration prerequisites; no creation route is enabled.
-- [ ] TAG-006 Reject writable Materialization when grant is read-only.
+- [x] TAG-006 Reject writable Materialization when grant is read-only. Application request verification requires write authority for every selected component, rejects invalid overall modes and rechecks grant downgrades on retries. HTTP creation and storage enforcement remain unwired as noted in TAG-005.
 - [ ] TAG-007 Bind Materialization metadata to AG Run/AR Execution references.
 - [ ] TAG-008 Handle AG grant expiry/revocation.
 - [ ] TAG-009 Stop lease renewal after authority expiry where applicable.

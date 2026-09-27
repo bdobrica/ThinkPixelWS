@@ -40,6 +40,13 @@ func TestMaterializationRequestScope(t *testing.T) {
 		{"duplicate ID with different mode", false}, {"wrong workspace", false},
 		{"wrong generation", false}, {"wrong tenant", false}, {"missing grant", false},
 		{"unavailable", false}, {"unconfigured", false},
+		{"writable with read-only grant", false},
+		{"writable with writable grant", true},
+		{"writable with read-only component request", true},
+		{"writable with mixed grant", false},
+		{"writable subset with unused read-only grant component", true},
+		{"read-only with writable grant", true},
+		{"missing materialization mode", false}, {"unknown materialization mode", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			generation := uint64(3)
@@ -78,6 +85,32 @@ func TestMaterializationRequestScope(t *testing.T) {
 				authority.TenantID = other
 			case "missing grant":
 				request.ExecutionGrant = ""
+			case "writable with read-only grant":
+				// The overall mode must not bypass read-only component authority.
+				request.Materialization.Mode = domain.MaterializationReadWrite
+			case "writable with writable grant", "writable with read-only component request", "read-only with writable grant":
+				for i := range authority.ComponentAccess {
+					authority.ComponentAccess[i].Mode = domain.MaterializationReadWrite
+				}
+				if tc.name != "read-only with writable grant" {
+					request.Materialization.Mode = domain.MaterializationReadWrite
+				}
+				if tc.name == "writable with writable grant" {
+					for i := range request.ComponentAccess {
+						request.ComponentAccess[i].Mode = domain.MaterializationReadWrite
+					}
+				}
+			case "writable with mixed grant", "writable subset with unused read-only grant component":
+				request.Materialization.Mode = domain.MaterializationReadWrite
+				request.ComponentAccess[0].Mode = domain.MaterializationReadWrite
+				authority.ComponentAccess[0].Mode = domain.MaterializationReadWrite
+				if tc.name == "writable subset with unused read-only grant component" {
+					request.ComponentAccess = request.ComponentAccess[:1]
+				}
+			case "missing materialization mode":
+				request.Materialization.Mode = ""
+			case "unknown materialization mode":
+				request.Materialization.Mode = "write"
 			}
 			before := request
 			if request.ComponentAccess != nil {
@@ -103,7 +136,15 @@ func TestMaterializationRequestScope(t *testing.T) {
 					t.Fatalf("valid request denied: %v, calls %d", err, calls)
 				}
 				// Retrying the same request must consult current authority, not prior success.
-				authority.ComponentAccess = nil
+				if request.Materialization.Mode == domain.MaterializationReadWrite {
+					// A grant downgrade must also deny a retry whose component
+					// request still says read-only but overall mode is writable.
+					for i := range authority.ComponentAccess {
+						authority.ComponentAccess[i].Mode = domain.MaterializationReadOnly
+					}
+				} else {
+					authority.ComponentAccess = nil
+				}
 				result, err = verifier.Verify(context.Background(), request)
 				if calls != 2 {
 					t.Fatal("retry reused old authority")
