@@ -55,7 +55,7 @@ func TestMaterializationLeaseRenewalPostgres(t *testing.T) {
 	db, repo, m, lease := leaseLifecycleFixture(t)
 	ctx := t.Context()
 	renew := func(l domain.MaterializationLease) (domain.MaterializationLease, error) {
-		return repo.Renew(ctx, l.TenantID, l.MaterializationID, l.ID, l.FencingToken, l.Holder)
+		return repo.Renew(ctx, l.TenantID, l.MaterializationID, l.ID, l.FencingToken, l.Holder, time.Now().Add(time.Hour))
 	}
 	for _, field := range []string{"tenant", "materialization", "lease", "holder", "fence", "overflow"} {
 		bad := lease
@@ -133,7 +133,7 @@ func TestMaterializationLeaseExpiryPostgres(t *testing.T) {
 	db, repo, m, lease := leaseLifecycleFixture(t)
 	ctx := t.Context()
 	ageLease(t, db, lease)
-	if _, err := repo.Renew(ctx, lease.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder); !errors.Is(err, ports.ErrMaterializationLeaseNotRenewable) {
+	if _, err := repo.Renew(ctx, lease.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder, time.Now().Add(time.Hour)); !errors.Is(err, ports.ErrMaterializationLeaseNotRenewable) {
 		t.Fatalf("expired renewal: %v", err)
 	}
 	if _, err := repo.Expire(ctx, uuid.Must(uuid.NewV7()), m.WorkspaceID); !errors.Is(err, ports.ErrWorkspaceNotFound) {
@@ -188,7 +188,7 @@ func TestMaterializationLeaseExpiryPostgres(t *testing.T) {
 	if err != nil || stored.State != domain.MaterializationFenced || stored.StateVersion != m.StateVersion+1 {
 		t.Fatalf("stale writer not fenced: %+v %v", stored, err)
 	}
-	if _, err := repo.Renew(ctx, lease.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder); !errors.Is(err, ports.ErrMaterializationLeaseNotRenewable) {
+	if _, err := repo.Renew(ctx, lease.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder, time.Now().Add(time.Hour)); !errors.Is(err, ports.ErrMaterializationLeaseNotRenewable) {
 		t.Fatalf("old writer renewed after replacement: %v", err)
 	}
 	if _, err := repo.Acquire(ctx, m.TenantID, m.ID, uuid.Must(uuid.NewV7()), "old"); !errors.Is(err, ports.ErrMaterializationLeaseIneligible) {
@@ -220,7 +220,7 @@ func TestMaterializationLeaseRenewalWaitsForWorkspacePostgres(t *testing.T) {
 	}
 	result := make(chan error, 1)
 	go func() {
-		_, err := repo.Renew(ctx, lease.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder)
+		_, err := repo.Renew(ctx, lease.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder, time.Now().Add(time.Hour))
 		result <- err
 	}()
 	// Wait until renewal is blocked on the Workspace, then expire the lease
@@ -282,7 +282,7 @@ func TestMaterializationLeaseRenewalCompetitionPostgres(t *testing.T) {
 	results := make(chan error, 3)
 	go func() {
 		<-start
-		_, err := repo.Renew(ctx, m.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder)
+		_, err := repo.Renew(ctx, m.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder, time.Now().Add(time.Hour))
 		results <- err
 	}()
 	go func() {
@@ -312,5 +312,71 @@ func TestMaterializationLeaseRenewalCompetitionPostgres(t *testing.T) {
 	w, err := NewWorkspaceRepository(db).Get(ctx, m.TenantID, m.WorkspaceID)
 	if err != nil || w.WriterFence != 1 {
 		t.Fatalf("renewal competition changed fence: %+v %v", w, err)
+	}
+}
+
+func TestMaterializationLeaseAuthorityDeadlinePostgres(t *testing.T) {
+	db, repo, m, lease := leaseLifecycleFixture(t)
+	ctx := t.Context()
+	renew := func(deadline time.Time) (domain.MaterializationLease, error) {
+		return repo.Renew(ctx, m.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder, deadline)
+	}
+	for _, deadline := range []time.Time{{}, time.Now().Add(-time.Second)} {
+		if got, err := renew(deadline); !errors.Is(err, ports.ErrMaterializationLeaseNotRenewable) || got != (domain.MaterializationLease{}) {
+			t.Fatalf("invalid deadline: %+v %v", got, err)
+		}
+	}
+	deadline := time.Now().UTC().Add(30 * time.Second).Truncate(time.Microsecond)
+	got, err := renew(deadline)
+	if err != nil || !got.ExpiresAt.Equal(deadline) || got.FencingToken != lease.FencingToken || !got.IssuedAt.Equal(lease.IssuedAt) {
+		t.Fatalf("bounded renewal: %+v %v", got, err)
+	}
+	var stored time.Time
+	if err := db.QueryRowContext(ctx, "SELECT expires_at FROM thinkpixelws.materialization_leases WHERE tenant_id=$1 AND lease_id=$2", m.TenantID, lease.ID).Scan(&stored); err != nil || !stored.Equal(deadline) {
+		t.Fatalf("stored deadline: %v %v", stored, err)
+	}
+}
+
+func TestMaterializationLeaseAuthorityExpiresWhileWaitingPostgres(t *testing.T) {
+	db, repo, m, lease := leaseLifecycleFixture(t)
+	ctx := t.Context()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	if _, err := lockLeaseWorkspace(ctx, tx, m.TenantID, m.WorkspaceID); err != nil {
+		t.Fatal(err)
+	}
+	authorityDeadline := time.Now().Add(300 * time.Millisecond)
+	result := make(chan error, 1)
+	go func() {
+		_, err := repo.Renew(ctx, lease.TenantID, m.ID, lease.ID, lease.FencingToken, lease.Holder, authorityDeadline)
+		result <- err
+	}()
+	// Verify the authority deadline again after waiting for the Workspace lock.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var waiting bool
+		err := db.QueryRowContext(ctx, `SELECT EXISTS (
+ SELECT 1 FROM pg_stat_activity WHERE datname=current_database()
+ AND wait_event_type='Lock' AND query LIKE 'SELECT writer_fence%')`).Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("renewal did not wait for Workspace lock")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	time.Sleep(time.Until(authorityDeadline) + 10*time.Millisecond)
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-result; !errors.Is(err, ports.ErrMaterializationLeaseNotRenewable) {
+		t.Fatalf("expired while waiting: %v", err)
 	}
 }

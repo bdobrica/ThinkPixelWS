@@ -220,8 +220,23 @@ for that check. Tests exercise read-only and writable requests, denial after
 success, expiry during validation/construction, and recovery through fresh valid
 verification. Returned claims are a point-in-time result, not reusable authority
 for later work. These tests use fixtures, not a live AG revocation service.
-Lease renewal and commit enforcement remain TAG-009/TAG-010; active-Materialization
-fencing, audit/events and AR release notifications are not yet wired to AG status.
+Commit enforcement remains TAG-010; active-Materialization fencing, audit/events
+and AR release notifications are not yet wired to AG status.
+
+TAG-009 adds `materialization.LeaseRenewer`: each call reloads the tenant-scoped
+Materialization and verifies fresh writable authority against its immutable
+Workspace, base generation, Run and exact optional Execution. Trusted application
+code must supply the complete Materialization component scope; a caller-selected
+subset is not safe. PostgreSQL renewal requires an explicit verified authority
+deadline, checks it using database time after acquiring locks, and caps the renewed
+lease at the earlier of that deadline and the normal 60-second duration. Missing
+or expired deadlines cannot renew; no grant is persisted. Local authorization
+callers must also provide a finite authorized deadline. Focused tests exercise
+authority loss after success and real database lock-wait expiry and persistence.
+Live AG verification, HTTP/scheduler composition, component-scope persistence and
+resolution, and independent administrative/action/policy checks remain integration
+prerequisites. This does not change initial acquisition or immediately revoke an
+already-issued lease; existing lease expiry/fencing behavior remains in effect.
 
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 

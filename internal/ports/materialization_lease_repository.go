@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/google/uuid"
@@ -18,10 +19,13 @@ var ErrMaterializationLeaseIneligible = errors.New("materialization is not eligi
 // reference is not authority. Acquisition returns only committed lease metadata.
 // Acquisition retires expired slots atomically. Renewal requires the matching
 // tenant, Materialization, lease, holder and current fence. Callers must reauthorize
-// every renewal; these identifiers do not constitute a grant.
+// every renewal; these identifiers do not constitute a grant. authorityExpiresAt
+// must come from fresh verified authority, never request input. Renew rejects a
+// missing/expired deadline after acquiring locks and caps lease expiry at it.
+// An explicit local authorizer must likewise supply a finite authority deadline.
 type MaterializationLeaseRepository interface {
 	Acquire(ctx context.Context, tenantID, materializationID, leaseID uuid.UUID, holder string) (domain.MaterializationLease, error)
-	Renew(ctx context.Context, tenantID, materializationID, leaseID uuid.UUID, fence uint64, holder string) (domain.MaterializationLease, error)
+	Renew(ctx context.Context, tenantID, materializationID, leaseID uuid.UUID, fence uint64, holder string, authorityExpiresAt time.Time) (domain.MaterializationLease, error)
 	// Expire retires an expired writer for one Workspace and fences its nonterminal
 	// Materialization. It is idempotent and does not allocate a new fence.
 	Expire(ctx context.Context, tenantID, workspaceID uuid.UUID) (bool, error)

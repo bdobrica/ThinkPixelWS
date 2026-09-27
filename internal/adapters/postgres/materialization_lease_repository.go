@@ -153,9 +153,9 @@ func (r *MaterializationLeaseRepository) Expire(ctx context.Context, tenantID, w
 	return expired, nil
 }
 
-func (r *MaterializationLeaseRepository) Renew(ctx context.Context, tenantID, materializationID, leaseID uuid.UUID, fence uint64, holder string) (domain.MaterializationLease, error) {
+func (r *MaterializationLeaseRepository) Renew(ctx context.Context, tenantID, materializationID, leaseID uuid.UUID, fence uint64, holder string, authorityExpiresAt time.Time) (domain.MaterializationLease, error) {
 	empty := domain.MaterializationLease{}
-	if tenantID == uuid.Nil || materializationID == uuid.Nil || leaseID == uuid.Nil || fence < 1 || fence > math.MaxInt64 || holder == "" {
+	if authorityExpiresAt.IsZero() || tenantID == uuid.Nil || materializationID == uuid.Nil || leaseID == uuid.Nil || fence < 1 || fence > math.MaxInt64 || holder == "" {
 		return empty, ports.ErrMaterializationLeaseNotRenewable
 	}
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -193,7 +193,7 @@ func (r *MaterializationLeaseRepository) Renew(ctx context.Context, tenantID, ma
 	if err := tx.QueryRowContext(ctx, `SELECT clock_timestamp()`).Scan(&now); err != nil {
 		return empty, err
 	}
-	if lease.MaterializationID != materializationID || lease.Holder != holder || lease.FencingToken != fence ||
+	if !now.Before(authorityExpiresAt) || lease.MaterializationID != materializationID || lease.Holder != holder || lease.FencingToken != fence ||
 		currentFence != fence || lease.ReleasedAt != nil || !now.Before(lease.ExpiresAt) || now.Before(lease.RenewedAt) ||
 		(state != domain.MaterializationRequested && state != domain.MaterializationPreparing &&
 			state != domain.MaterializationReady && state != domain.MaterializationActive && state != domain.MaterializationCheckpointing) {
@@ -202,6 +202,9 @@ func (r *MaterializationLeaseRepository) Renew(ctx context.Context, tenantID, ma
 	lease.IssuedAt = lease.IssuedAt.UTC()
 	lease.RenewedAt = now.UTC()
 	lease.ExpiresAt = now.UTC().Add(domain.DefaultMaterializationLeaseDuration)
+	if authorityExpiresAt.Before(lease.ExpiresAt) {
+		lease.ExpiresAt = authorityExpiresAt.UTC()
+	}
 	if _, err := tx.ExecContext(ctx, `UPDATE thinkpixelws.materialization_leases
  SET renewed_at=$3,expires_at=$4 WHERE tenant_id=$1 AND lease_id=$2`,
 		tenantID, leaseID, lease.RenewedAt, lease.ExpiresAt); err != nil {
