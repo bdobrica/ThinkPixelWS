@@ -306,7 +306,7 @@ The following remain valuable but should not block the first integrated demo/RC 
 
 ## Phase 7 — ThinkPixel-integrated MVP
 
-- [ ] TAG-001 Implement ThinkPixelAG execution-authority verifier port.
+- [x] TAG-001 Implement ThinkPixelAG execution-authority verifier port. Transport-independent verified claims and fail-closed consumption helper are implemented; a concrete AG adapter and operation-specific scope enforcement remain separate integration work.
 - [ ] TAG-002 Add secure WS↔AG service authentication.
 - [ ] TAG-003 Validate Workspace ID/generation/component subset against AG grant.
 - [ ] TAG-004 Validate read-only vs writable mode against AG grant.

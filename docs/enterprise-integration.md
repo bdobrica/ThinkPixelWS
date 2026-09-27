@@ -111,6 +111,22 @@ go vet ./internal/adapters/workspace/kubernetes ./internal/adapters/sandbox/agen
 
 ## ThinkPixelAG execution grant
 
+TAG-001 provides `ports.ExecutionAuthorityVerifier` and typed authority claims,
+independent of AG transport types. `security.VerifyExecutionAuthority` invokes
+the verifier on every call, passes the authenticated tenant and opaque grant,
+checks the returned tenant/audience and identity/time envelope, and returns zero
+authority with a sanitized error on failure or cancellation. Its clock is injected
+and checked after verification so time spent verifying cannot extend expiry.
+
+An adapter must authenticate its configured AG issuer and verify integrity,
+required claims, time bounds and current revocation/cancellation status. There is
+no concrete adapter or live WS–AG grant exchange yet; AG's execution handoff
+remains a proposal rather than a published WS grant wire contract. The helper
+does not authorize an operation: callers must separately enforce Workspace,
+generation, component, mode, action, classification/residency and WS lease/fence
+constraints. Administrative authorization also remains independent. The focused
+security tests use a verifier fixture; they do not qualify live AG verification.
+
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 
 WS intersects rather than unions permissions: requested components must be a subset; requested mode cannot exceed any per-component mode; Workspace-wide write does not infer external-binding use. A missing component is denied. A read-only grant cannot acquire/renew a writer lease, checkpoint as authoritative, or commit.
