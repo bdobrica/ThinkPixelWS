@@ -10,6 +10,7 @@ import (
 
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/bdobrica/ThinkPixelWS/internal/ports"
+	"github.com/bdobrica/ThinkPixelWS/internal/security"
 	"github.com/google/uuid"
 )
 
@@ -21,6 +22,9 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 	var zero domain.WorkspaceGeneration
 	if err := ctx.Err(); err != nil {
 		return zero, err
+	}
+	if in.AuthorityExpiresAt.IsZero() {
+		return zero, security.ErrExecutionAuthority
 	}
 	if in.ExpectedHead == 0 || in.ExpectedHead >= math.MaxInt64 {
 		return zero, ports.ErrWorkspaceHeadConflict
@@ -56,6 +60,9 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 	defer tx.Rollback()
 	guard := NewMaterializationWriterGuard(tx)
 	if err := guard.ValidateCommit(ctx, in.Writer, in.ExpectedHead); err != nil {
+		return zero, err
+	}
+	if err := validateCommitAuthority(ctx, tx, in.AuthorityExpiresAt); err != nil {
 		return zero, err
 	}
 	var version uint64
@@ -156,6 +163,9 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 	if err := guard.ValidateCommit(ctx, in.Writer, g.Number); err != nil {
 		return zero, err
 	}
+	if err := validateCommitAuthority(ctx, tx, in.AuthorityExpiresAt); err != nil {
+		return zero, err
+	}
 	if err := tx.Commit(); err != nil {
 		return zero, err
 	}
@@ -163,3 +173,15 @@ func (c GenerationCommitter) Commit(ctx context.Context, in ports.GenerationComm
 }
 
 var _ ports.GenerationCommitter = GenerationCommitter{}
+
+// Database wall time is sampled after locks and again after all publication work.
+func validateCommitAuthority(ctx context.Context, tx *sql.Tx, expires time.Time) error {
+	var now time.Time
+	if err := tx.QueryRowContext(ctx, `SELECT clock_timestamp()`).Scan(&now); err != nil {
+		return err
+	}
+	if expires.IsZero() || !now.Before(expires) {
+		return security.ErrExecutionAuthority
+	}
+	return nil
+}

@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/bdobrica/ThinkPixelWS/internal/domain/shared"
@@ -16,6 +17,10 @@ import (
 // not authority; WS does not validate them against another component database.
 // The manifest must describe that complete capture, not the mutable PVC itself.
 type GenerationCommit struct {
+	// AuthorityExpiresAt is required, freshly verified by trusted authorization
+	// after capture. Never accept a caller-supplied deadline. Explicit local
+	// authorization must also supply a finite deadline.
+	AuthorityExpiresAt     time.Time
 	Writer                 MaterializationWriter
 	ExpectedHead           uint64
 	MaterializationVersion uint64

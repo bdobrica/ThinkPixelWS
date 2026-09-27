@@ -8,17 +8,20 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/bdobrica/ThinkPixelWS/internal/domain"
 	"github.com/bdobrica/ThinkPixelWS/internal/domain/shared"
 	"github.com/bdobrica/ThinkPixelWS/internal/ports"
+	"github.com/bdobrica/ThinkPixelWS/internal/security"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
 func generationCommitInput(w ports.MaterializationWriter) ports.GenerationCommit {
 	return ports.GenerationCommit{
-		Writer: w, ExpectedHead: 1, MaterializationVersion: 1,
+		AuthorityExpiresAt: time.Now().Add(time.Hour),
+		Writer:             w, ExpectedHead: 1, MaterializationVersion: 1,
 		GenerationID: uuid.Must(uuid.NewV7()), ManifestDigest: shared.DigestBytes([]byte("prepared immutable manifest")),
 		Durability: domain.GenerationDurabilityPortable, Principal: "commit-test",
 	}
@@ -258,5 +261,67 @@ func TestGenerationRunProvenanceMigrationPostgres(t *testing.T) {
 		if !errors.As(err, &pgErr) || pgErr.Code != "23514" || pgErr.Constraint != "workspace_generations_run_id_uuidv7" {
 			t.Fatalf("invalid Run ID: %v", err)
 		}
+	}
+}
+
+func TestGenerationCommitAuthorityPostgres(t *testing.T) {
+	for _, scenario := range []string{"missing", "expired", "lock wait", "publication"} {
+		t.Run(scenario, func(t *testing.T) {
+			db, _, m, _, w := writerGuardFixture(t)
+			if _, err := db.ExecContext(t.Context(), "UPDATE thinkpixelws.materializations SET lifecycle_state='CHECKPOINTING'"); err != nil {
+				t.Fatal(err)
+			}
+			before, err := NewMaterializationRepository(db).Get(t.Context(), m.TenantID, m.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			in := generationCommitInput(w)
+			in.MarkClean = true
+			switch scenario {
+			case "missing":
+				in.AuthorityExpiresAt = time.Time{}
+			case "expired":
+				in.AuthorityExpiresAt = time.Now().Add(-time.Second)
+			case "publication":
+				// Delay after generation/head/clean marker writes; final check must roll
+				// back all of them even though the writer lease is still live.
+				if _, err := db.ExecContext(t.Context(), `CREATE FUNCTION thinkpixelws.delay_commit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$;
+CREATE TRIGGER delay_commit BEFORE INSERT ON thinkpixelws.outbox_messages FOR EACH ROW EXECUTE FUNCTION thinkpixelws.delay_commit()`); err != nil {
+					t.Fatal(err)
+				}
+				in.AuthorityExpiresAt = time.Now().Add(300 * time.Millisecond)
+			case "lock wait":
+				tx, err := db.BeginTx(t.Context(), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer tx.Rollback()
+				if _, err := tx.ExecContext(t.Context(), "SELECT 1 FROM thinkpixelws.workspaces FOR UPDATE"); err != nil {
+					t.Fatal(err)
+				}
+				in.AuthorityExpiresAt = time.Now().Add(300 * time.Millisecond)
+				result := make(chan error, 1)
+				go func() { _, err := (GenerationCommitter{DB: db}).Commit(t.Context(), in); result <- err }()
+				waitForWriterGuardLock(t, db, "SELECT writer_fence,head_generation%")
+				time.Sleep(time.Until(in.AuthorityExpiresAt) + 10*time.Millisecond)
+				if err := tx.Commit(); err != nil {
+					t.Fatal(err)
+				}
+				err = <-result
+				if !errors.Is(err, security.ErrExecutionAuthority) {
+					t.Fatalf("lock expiry: %v", err)
+				}
+			}
+			if scenario != "lock wait" {
+				if _, err := (GenerationCommitter{DB: db}).Commit(t.Context(), in); !errors.Is(err, security.ErrExecutionAuthority) {
+					t.Fatalf("expiry: %v", err)
+				}
+			}
+			assertCommitCounts(t, db, 1, 1, 0)
+			after, err := NewMaterializationRepository(db).Get(t.Context(), m.TenantID, m.ID)
+			if err != nil || !reflect.DeepEqual(before, after) {
+				t.Fatalf("materialization changed: %+v %v", after, err)
+			}
+		})
 	}
 }

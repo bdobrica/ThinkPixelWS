@@ -220,8 +220,8 @@ for that check. Tests exercise read-only and writable requests, denial after
 success, expiry during validation/construction, and recovery through fresh valid
 verification. Returned claims are a point-in-time result, not reusable authority
 for later work. These tests use fixtures, not a live AG revocation service.
-Commit enforcement remains TAG-010; active-Materialization fencing, audit/events
-and AR release notifications are not yet wired to AG status.
+Active-Materialization fencing, audit/events and AR release notifications are
+not yet wired to AG status.
 
 TAG-009 adds `materialization.LeaseRenewer`: each call reloads the tenant-scoped
 Materialization and verifies fresh writable authority against its immutable
@@ -237,6 +237,23 @@ Live AG verification, HTTP/scheduler composition, component-scope persistence an
 resolution, and independent administrative/action/policy checks remain integration
 prerequisites. This does not change initial acquisition or immediately revoke an
 already-issued lease; existing lease expiry/fencing behavior remains in effect.
+
+TAG-010 adds `materialization.GenerationCommitter`: after immutable capture,
+each call verifies fresh write authority for every captured component against
+the stored Workspace/base generation/Run/exact optional Execution. Attribution
+and the deadline derive from verified claims; supplied attribution/deadlines
+cannot override them. PostgreSQL retains exact Workspace component coverage,
+lease, fence and head checks, requires an explicit authorized deadline (also for
+local authorization), and samples database wall time after locks and immediately
+before transaction commit. Expiry rolls back generation, head, clean marker,
+audit and outbox together. No credential is persisted. Tests cover denial after
+prior success, scope loss, database lock-wait expiry and expiry during publication.
+The existing scope verifier denies empty component sets; empty-Workspace governed
+publication is not supported by this application boundary. Live AG verification,
+HTTP/capture orchestration and independent administrative/action/policy checks
+remain prerequisites. Revocation after verification is not pushed into an ongoing
+transaction; this change enforces the verified expiry deadline at the final
+pre-commit check, using the same publication boundary as lease enforcement.
 
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 
