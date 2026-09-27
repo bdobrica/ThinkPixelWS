@@ -133,6 +133,29 @@ an isolated database with AR's migrations applied:
 go test ./internal/adapters/postgres -run '^TestSessionClosePreservesWorkspaceMetadata$' -count=1
 ```
 
+### Sandbox deletion preservation (TAR-005)
+
+AR commit `401952d` extends the WS descriptor attachment regression to release
+and replay after authority denial. The fixture rejects storage mutations and
+non-Sandbox compute requests, checks exact UID/foreground deletion, and confirms
+the retained Workspace attachment binding is unchanged.
+
+The same commit strengthens AR's opt-in `TestLiveColdLifecycle`: write Workspace
+bytes, release through the real AR provider, wait for Sandbox and all execution
+Pods to disappear, compare independent Workspace/vendor-state PVC and backing PV
+identities, and read the original bytes through a fresh read-only Pod. It passed
+on 2026-09-27 in 32.42 seconds with Kata on `k3spi-02` and `local-path`, across
+two distinct Sandbox UIDs. Test namespaces and volumes were removed afterward.
+See AR's `docs/evidence/kas-019-live-lifecycle.md` for identities and reproduction.
+
+This completes the Sandbox provider storage-lifetime verification. Together with
+the [WS-owned storage deletion test](homelab-storage.md#sandbox-deletion-survival-test),
+it covers independent claims on both sides of the attachment boundary. The live
+AR fixture provisions its own claims; it does not call a WS HTTP endpoint or
+assert WS database metadata, canonical generations, AG authority, or Session close.
+Those service-integration gaps remain as described above. No production code or
+authority contract changed.
+
 ## ThinkPixelAG execution grant
 
 ### Service authentication
