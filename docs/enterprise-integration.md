@@ -172,9 +172,17 @@ UUIDv7 identifiers, duplicate requested/granted components, and any component
 expansion are denied with zero authority and the same sanitized error. Order is
 irrelevant and proper subsets are allowed; nothing is implicitly expanded or
 trimmed. Tests use verifier fixtures, including fresh denial after prior success.
+TAG-004 extends that scope with explicit per-component access modes. Read-only
+requests accept either grant mode; read-write requests require read-write authority
+for the same component. Missing or unknown modes in requests or grants are denied,
+including invalid modes on unused grant components. The helper never upgrades or
+silently downgrades requested access. Tests cover mixed access, write escalation,
+invalid modes and a grant becoming read-only on the next verification.
 Callers must still resolve component membership within the authenticated tenant
-and Workspace generation and enforce mode/action/policy/lease constraints.
-Materialization request integration remains TAG-005; no live AG route is enabled.
+and Workspace generation and enforce action/policy/lease constraints. They must
+also ensure actual storage access stays within the checked per-component modes.
+Materialization request integration, including its overall mode, remains
+TAG-005/TAG-006; no live AG route is enabled.
 
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 

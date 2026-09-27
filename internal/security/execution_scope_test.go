@@ -25,6 +25,9 @@ func TestExecutionScope(t *testing.T) {
 		allow bool
 	}{
 		{"exact scope", true}, {"proper subset", true}, {"reordered", true}, {"unpinned generation", true},
+		{"read-only under writable grant", true}, {"grant downgraded on next verification", true},
+		{"writable under read-only grant", false}, {"omitted request mode", false}, {"unknown request mode", false},
+		{"omitted grant mode", false}, {"unknown grant mode", false}, {"invalid unused grant mode", false},
 		{"wrong workspace", false}, {"wrong generation", false}, {"expanded components", false},
 		{"empty request", false}, {"empty grant", false}, {"duplicate request", false}, {"duplicate grant", false},
 		{"invalid workspace", false}, {"invalid request component", false}, {"invalid grant component", false},
@@ -36,7 +39,7 @@ func TestExecutionScope(t *testing.T) {
 			defer cancel()
 			generation := uint64(3)
 			request := ports.ExecutionAuthorityRequest{TenantID: tenant, Grant: "sensitive-grant"}
-			scope := ExecutionScope{WorkspaceID: workspace, Generation: 3, ComponentIDs: []uuid.UUID{one, two}}
+			scope := ExecutionScope{WorkspaceID: workspace, Generation: 3, ComponentAccess: []ports.ExecutionComponentAccess{{ComponentID: one, Mode: domain.MaterializationReadOnly}, {ComponentID: two, Mode: domain.MaterializationReadWrite}}}
 			a := ports.ExecutionAuthority{
 				Issuer: "trusted-ag", Audience: ports.ExecutionAuthorityAudience, GrantID: "grant-1",
 				TenantID: tenant, Principal: "alice", RunID: other, WorkspaceID: workspace, Generation: &generation,
@@ -44,10 +47,24 @@ func TestExecutionScope(t *testing.T) {
 				IssuedAt:        now.Add(-time.Minute), NotBefore: now.Add(-time.Minute), ExpiresAt: now.Add(time.Minute),
 			}
 			switch tc.name {
+			case "read-only under writable grant":
+				scope.ComponentAccess[1].Mode = domain.MaterializationReadOnly
+			case "writable under read-only grant":
+				scope.ComponentAccess[0].Mode = domain.MaterializationReadWrite
+			case "omitted request mode":
+				scope.ComponentAccess[0].Mode = ""
+			case "unknown request mode":
+				scope.ComponentAccess[0].Mode = "write"
+			case "omitted grant mode":
+				a.ComponentAccess[0].Mode = ""
+			case "unknown grant mode":
+				a.ComponentAccess[0].Mode = "write"
+			case "invalid unused grant mode":
+				a.ComponentAccess = append(a.ComponentAccess, ports.ExecutionComponentAccess{ComponentID: other, Mode: "admin"})
 			case "proper subset":
-				scope.ComponentIDs = []uuid.UUID{two}
+				scope.ComponentAccess = scope.ComponentAccess[1:]
 			case "reordered":
-				scope.ComponentIDs = []uuid.UUID{two, one}
+				scope.ComponentAccess[0], scope.ComponentAccess[1] = scope.ComponentAccess[1], scope.ComponentAccess[0]
 			case "unpinned generation":
 				a.Generation = nil
 				scope.Generation = 42
@@ -56,21 +73,21 @@ func TestExecutionScope(t *testing.T) {
 			case "wrong generation":
 				scope.Generation++
 			case "expanded components":
-				scope.ComponentIDs = append(scope.ComponentIDs, other)
+				scope.ComponentAccess = append(scope.ComponentAccess, ports.ExecutionComponentAccess{ComponentID: other, Mode: domain.MaterializationReadOnly})
 			case "empty request":
-				scope.ComponentIDs = nil
+				scope.ComponentAccess = nil
 			case "empty grant":
 				a.ComponentAccess = nil
 			case "duplicate request":
-				scope.ComponentIDs = []uuid.UUID{one, one}
+				scope.ComponentAccess = append(scope.ComponentAccess, scope.ComponentAccess[0])
 			case "duplicate grant":
 				a.ComponentAccess = append(a.ComponentAccess, ports.ExecutionComponentAccess{ComponentID: one, Mode: domain.MaterializationReadWrite})
 			case "invalid workspace":
 				scope.WorkspaceID = uuid.Nil
 			case "invalid request component":
-				scope.ComponentIDs[0] = uuid.New()
+				scope.ComponentAccess[0].ComponentID = uuid.New()
 			case "invalid grant component":
-				a.ComponentAccess = append(a.ComponentAccess, ports.ExecutionComponentAccess{ComponentID: uuid.Nil})
+				a.ComponentAccess = append(a.ComponentAccess, ports.ExecutionComponentAccess{ComponentID: uuid.Nil, Mode: domain.MaterializationReadOnly})
 			case "zero generation":
 				scope.Generation = 0
 			case "overflow generation":
@@ -95,8 +112,10 @@ func TestExecutionScope(t *testing.T) {
 				if tc.name == "unavailable" {
 					return a, errors.New(request.Grant)
 				}
-				// A subsequent revocation must not reuse the previous successful scope check.
-				if calls > 1 {
+				// A subsequent downgrade or revocation must not reuse prior authority.
+				if calls > 1 && tc.name == "grant downgraded on next verification" {
+					a.ComponentAccess[1].Mode = domain.MaterializationReadOnly
+				} else if calls > 1 {
 					return ports.ExecutionAuthority{}, errors.New("revoked")
 				}
 				return a, nil
