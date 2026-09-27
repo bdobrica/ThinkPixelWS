@@ -181,8 +181,17 @@ invalid modes and a grant becoming read-only on the next verification.
 Callers must still resolve component membership within the authenticated tenant
 and Workspace generation and enforce action/policy/lease constraints. They must
 also ensure actual storage access stays within the checked per-component modes.
-Materialization request integration, including its overall mode, remains
-TAG-005/TAG-006; no live AG route is enabled.
+
+TAG-005 adds `materialization.RequestScopeVerifier` at the application request
+boundary. It derives tenant, Workspace and generation from the Materialization
+creation input and checks its explicit component access against fresh authority.
+Expansion, substitution, empty sets and duplicate IDs are rejected without
+modifying the request; a proper subset stays a subset. The returned grant may
+contain more components and must never replace the requested set. Tests exercise
+these request cases and denial after the grant's component set changes on retry.
+This is a scope check, not a complete creation authorizer. Overall Materialization
+mode remains TAG-006. HTTP creation, persisted component scope and enforcement by
+storage preparation/attachment are not wired; no live AG route is enabled.
 
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 
