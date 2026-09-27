@@ -211,11 +211,23 @@ record. Focused tests cover verified construction, mismatches, expired retries,
 persistence, immutability and migration down/up. This adds no HTTP or live AG
 composition and does not replace the remaining creation authorization checks.
 
+TAG-008 enforces expiry through the end of scope/request validation and metadata
+construction: `now >= expiresAt` denies with no grace period and returns no
+authority or Materialization. Every retry consults the verifier again. Revoked
+grants, cancelled Runs and uncertain/unavailable AG status must be verifier
+errors, even for otherwise valid signed claims; prior success never substitutes
+for that check. Tests exercise read-only and writable requests, denial after
+success, expiry during validation/construction, and recovery through fresh valid
+verification. Returned claims are a point-in-time result, not reusable authority
+for later work. These tests use fixtures, not a live AG revocation service.
+Lease renewal and commit enforcement remain TAG-009/TAG-010; active-Materialization
+fencing, audit/events and AR release notifications are not yet wired to AG status.
+
 The signed/introspected grant MUST contain issuer, audience `thinkpixelws`, grant ID, tenant, principal, Run and optional Execution, Workspace ID, optional exact generation, component allow-list, per-component `read-only`/`read-write` mode, permitted actions, classification ceiling, residency constraints, issued/not-before/expiry times, and revocation/cancellation semantics. It MUST NOT contain downstream credentials.
 
 WS intersects rather than unions permissions: requested components must be a subset; requested mode cannot exceed any per-component mode; Workspace-wide write does not infer external-binding use. A missing component is denied. A read-only grant cannot acquire/renew a writer lease, checkpoint as authoritative, or commit.
 
-On cancellation, expiry, or revocation, WS denies new operations, stops lease renewal, fences writable Materializations, emits an audit/event, requests AR release/termination where configured, and never commits queued work. Authority-service uncertainty fails closed for new privilege and renewal.
+The required integrated behavior on cancellation, expiry, or revocation is to deny new operations, stop lease renewal, fence writable Materializations, emit an audit/event, request AR release/termination where configured, and never commit queued work. Authority-service uncertainty must fail closed for new privilege and renewal. The implemented request boundary and remaining lifecycle integration are described above.
 
 ## ThinkPixelTG governed source import
 

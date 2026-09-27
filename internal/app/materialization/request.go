@@ -66,6 +66,9 @@ func (v RequestScopeVerifier) Verify(ctx context.Context, request Request) (port
 			}
 		}
 	}
+	if ctx.Err() != nil || !v.Clock.Now().Before(authority.ExpiresAt) {
+		return ports.ExecutionAuthority{}, security.ErrExecutionAuthority
+	}
 	return authority, nil
 }
 
@@ -80,5 +83,9 @@ func (v RequestScopeVerifier) VerifiedMaterialization(ctx context.Context, reque
 	}
 	input := request.Materialization
 	input.RunID, input.ExecutionID = authority.RunID, authority.ExecutionID
-	return input.Materialization(v.Clock.Now())
+	now := v.Clock.Now()
+	if ctx.Err() != nil || !now.Before(authority.ExpiresAt) {
+		return domain.Materialization{}, security.ErrExecutionAuthority
+	}
+	return input.Materialization(now)
 }

@@ -58,7 +58,8 @@ func VerifyExecutionScope(ctx context.Context, verifier ports.ExecutionAuthority
 			return deny()
 		}
 	}
-	if ctx.Err() != nil {
+	// Scope validation must not extend the lifetime checked by the verifier.
+	if ctx.Err() != nil || !c.Now().Before(a.ExpiresAt) {
 		return deny()
 	}
 	return a, nil

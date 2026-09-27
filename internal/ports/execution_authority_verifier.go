@@ -52,6 +52,9 @@ type ExecutionAuthority struct {
 // audience thinkpixelws, validate all required claims and time bounds, and check
 // current revocation/cancellation under the agreed AG freshness contract on every
 // call. Unavailable or uncertain authority must return an error and no authority.
+// Revoked grants and cancelled Runs must also return an error, even when their
+// signed claims have not expired. Prior success is never a fallback during an
+// outage or a substitute for checking current status on a retry.
 // Decoding a token, authenticating a service, or finding Workspace membership is
 // insufficient. Implementations must honor cancellation and never retain grants
 // or include them in errors. No AG transport or internal types cross this port.
